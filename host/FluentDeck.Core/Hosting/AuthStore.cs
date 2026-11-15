@@ -91,6 +91,9 @@ public sealed class AuthStore
     public void CancelPairing() { lock (_gate) _code = null; }
 
     /// <summary>Returns a new token if the code is right; null otherwise.</summary>
+    /// <summary>Keep the pairing code active after a successful pair. DevHost only (UI tests pair on every launch).</summary>
+    public bool ReusableCode { get; set; }
+
     public string? TryCompletePairing(string code, string deviceName, out string? error)
     {
         PairedDevice device;
@@ -114,7 +117,7 @@ public sealed class AuthStore
                 return null;
             }
 
-            _code = null;
+            if (ReusableCode) _codeAttempts = 0; else _code = null;
             token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
             device = new PairedDevice(Clean(deviceName), Hash(token), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
             _devices.Add(device);

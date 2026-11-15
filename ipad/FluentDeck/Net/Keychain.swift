@@ -2,10 +2,18 @@ import Foundation
 import Security
 
 /// Device tokens, one per paired PC (keyed by the host's id).
+///
+/// If the Keychain refuses a write (an unsigned Simulator build has no Keychain access), the
+/// token is still kept in memory for this launch, so pairing and authenticated assets work.
 enum Keychain {
     private static let service = "FluentDeck.hostToken"
+    nonisolated(unsafe) private static var memory: [String: String] = [:]
 
     static func token(for hostId: String) -> String? {
+        storedToken(for: hostId) ?? memory[hostId]
+    }
+
+    private static func storedToken(for hostId: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -28,10 +36,12 @@ enum Keychain {
             kSecValueData as String: Data(token.utf8),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
+        memory[hostId] = token
         SecItemAdd(attributes as CFDictionary, nil)
     }
 
     static func deleteToken(for hostId: String) {
+        memory[hostId] = nil
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

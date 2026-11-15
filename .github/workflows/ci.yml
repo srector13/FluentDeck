@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           dotnet build host/FluentDeck.DevHost -c Release
-          export FLUENTDECK_HOME="$RUNNER_TEMP/fd" FLUENTDECK_PAIR_CODE=123456
+          export FLUENTDECK_HOME="$RUNNER_TEMP/fd" FLUENTDECK_PAIR_CODE=123456 FLUENTDECK_NAME="Studio PC"
           nohup dotnet run --no-build -c Release --project host/FluentDeck.DevHost > devhost.log 2>&1 &
           for i in $(seq 1 60); do
             if curl -s -o /dev/null http://127.0.0.1:47610/; then echo "DevHost is up"; exit 0; fi
@@ -140,8 +140,18 @@ jobs:
         shell: bash
         run: |
           [ -d ui.xcresult ] || exit 0
-          python3 scripts/export_screenshots.py ui.xcresult screenshots || true
-          ls -la screenshots || true
+          python3 scripts/export_screenshots.py ui.xcresult screenshots-all || true
+          mkdir -p screenshots
+          # Keep the named shots; failure debug output goes to the logs artifact.
+          find screenshots-all -name '[0-9][0-9]-*.png' -exec mv {} screenshots/ \;
+          # XCUIScreen captures in the device's portrait buffer: turn landscape shots upright.
+          for f in screenshots/*.png; do
+            case "$f" in *portrait*) continue ;; esac
+            W=$(sips -g pixelWidth "$f" | awk '/pixelWidth/ {print $2}')
+            H=$(sips -g pixelHeight "$f" | awk '/pixelHeight/ {print $2}')
+            if [ "$H" -gt "$W" ]; then sips -r 270 "$f" > /dev/null; fi
+          done
+          ls -la screenshots
 
       - name: Upload screenshots
         if: always()
@@ -171,5 +181,7 @@ jobs:
             ui-tests.log
             device-build.log
             devhost.log
+            screenshots-all/*.txt
+            screenshots-all/UI*
           if-no-files-found: ignore
           retention-days: 7

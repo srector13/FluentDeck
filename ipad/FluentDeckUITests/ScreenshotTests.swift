@@ -4,8 +4,8 @@ import XCTest
 ///
 /// The DevHost must be listening on 127.0.0.1:47610 with FLUENTDECK_PAIR_CODE=123456
 /// (CI starts it; locally: `FLUENTDECK_PAIR_CODE=123456 dotnet run --project host/FluentDeck.DevHost`).
-/// The pairing code is single-use, so this is one ordered test: pair once, then relaunch
-/// with the saved token for the remaining shots.
+/// The DevHost keeps that code valid, and every launch after the first two passes it, so a
+/// launch pairs again when the unsigned Simulator build can't keep its token in the Keychain.
 final class ScreenshotTests: XCTestCase {
     private let host = "127.0.0.1:47610"
     private let code = "123456"
@@ -34,25 +34,25 @@ final class ScreenshotTests: XCTestCase {
         waitForDashboard(app)
         shot("03-home-dark-landscape")
 
-        // 4. Same board in light mode (reconnects with the saved token).
-        launch(app, ["-FluentDeckTheme", "light", "-FluentDeckBoard", "0"], orientation: .landscapeLeft)
+        // 4. Same board in light mode.
+        launch(app, ["-FluentDeckTheme", "light", "-FluentDeckBoard", "0", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .landscapeLeft)
         waitForDashboard(app)
         shot("04-home-light-landscape")
 
         // 5. The Dev board.
-        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "1"], orientation: .landscapeLeft)
+        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "1", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .landscapeLeft)
         waitForDashboard(app)
         shot("05-dev-board-dark")
 
         // 6. Add widgets picker.
-        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "0"], orientation: .landscapeLeft)
+        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "0", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .landscapeLeft)
         waitForDashboard(app)
         app.buttons["Add widgets"].firstMatch.tap()
         sleep(2)
         shot("06-widget-picker-dark")
 
         // 7. Portrait.
-        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "0"], orientation: .portrait)
+        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "0", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .portrait)
         waitForDashboard(app)
         shot("07-home-dark-portrait")
     }
