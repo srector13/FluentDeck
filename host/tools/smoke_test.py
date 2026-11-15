@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""End-to-end protocol check against a running host (DevHost or the real Windows host).
+
+    FLUENTDECK_HOME=/tmp/fd FLUENTDECK_PAIR_CODE=123456 dotnet run --project host/FluentDeck.DevHost
+    python3 host/tools/smoke_test.py --host 127.0.0.1 --code 123456 [--deck-file /tmp/fd/deck.json]
+
+Needs: pip install websockets
+"""
+import argparse, asyncio, json, time, urllib.request, urllib.error
+import websockets
+
+class Client:
+    def __init__(self, ws):
+        self.ws, self.states, self.inbox, self.n = ws, {}, [], 0
+
+    async def send(self, **msg):
+        await self.ws.send(json.dumps(msg))
+
+    async def recv(self, timeout=5):
+        msg = json.loads(await asyncio.wait_for(self.ws.recv(), timeout))
+        if msg["type"] == "state":
+            self.states[msg["topic"]] = msg["data"]
+        return msg
+
+    async def until(self, pred, timeout=5, what="message"):
+        deadline = time.monotonic() + timeout
+        while True:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise AssertionError(f"timed out waiting for {what}")
+            msg = await self.recv(left)
+            if pred(msg):
+                return msg
+
+    async def invoke(self, panel, action, **args):
+        self.n += 1
+        rid = f"r{self.n}"
+        await self.send(type="invoke", id=rid, panel=panel, action=action, args=args)
+        return await self.until(lambda m: m["type"] == "result" and m["id"] == rid, what=f"result of {panel}.{action}")
+
+def check(cond, label):
+    print(("  ok   " if cond else "  FAIL ") + label)
+    if not cond:
+        raise SystemExit(1)
+
+async def main(a):
+    url = f"ws://{a.host}:{a.port}/ws"
+    async with websockets.connect(url, max_size=2**22) as ws:
+        c = Client(ws)
+        server = await c.recv()
+        check(server["type"] == "server" and server["protocol"] == 1, f"server hello from {server.get('name')}")
+
+        await c.send(type="subscribe", topics=["media"])
+        m = await c.recv()
+        check(m["type"] == "authError", "unauthenticated subscribe is refused")
+
+        await c.send(type="hello", token="nope", client={"name": "smoke"})
+        m = await c.recv()
+        check(m["type"] == "authError" and m["needsPairing"], "bad token → needsPairing")
+
+        await c.send(type="pair", code="000000" if a.code != "000000" else "111111", client={"name": "smoke"})
+        m = await c.recv()
+        check(m["type"] == "authError", "wrong pairing code is refused")
+
+        await c.send(type="pair", code=a.code, client={"name": "smoke test"})
+        paired = await c.recv()
+        check(paired["type"] == "paired" and len(paired["token"]) > 20, "pairing returns a token")
+        token = paired["token"]
+        welcome = await c.recv()
+        ids = [p["id"] for p in welcome["panels"]]
+        check(welcome["type"] == "welcome" and {"deck", "media", "audio", "system", "theme"} <= set(ids), f"welcome lists panels {ids}")
+
+        await c.send(type="subscribe", topics=ids)
+        await c.until(lambda m: set(ids) <= set(c.states), what="snapshots")
+        check(True, "snapshot for every subscribed topic")
+
+        was = c.states["media"]["status"]
+        r = await c.invoke("media", "playPause")
+        check(r["ok"], "media.playPause ok")
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "media" and m["data"]["status"] != was, what="media state flip")
+        check(True, f"media status {was} → {c.states['media']['status']}")
+
+        r = await c.invoke("audio", "setVolume", volume=0.25)
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "audio" and abs(m["data"]["output"]["volume"] - 0.25) < 1e-6, what="volume")
+        check(r["ok"], "audio.setVolume → state follows")
+
+        mic_before = c.states["audio"]["input"]["muted"]
+        r = await c.invoke("deck", "press", buttonId="main/mic")
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "audio" and m["data"]["input"]["muted"] != mic_before, what="mic toggle")
+        check(r["ok"], "deck builtin button toggles the mic")
+
+        r = await c.invoke("deck", "press", buttonId="main/snip")
+        check(r["ok"], "deck keys button runs")
+        r = await c.invoke("deck", "press", buttonId="dev/focus")
+        check(r["ok"], "deck sequence button runs")
+        r = await c.invoke("deck", "press", buttonId="main/nope")
+        check(not r["ok"] and "no longer exists" in r["error"], "unknown button → friendly error")
+        r = await c.invoke("media", "explode")
+        check(not r["ok"], "unknown action → ok:false")
+        r = await c.invoke("nope", "x")
+        check(not r["ok"], "unknown panel → ok:false")
+
+        # burst of fire-and-forget slider updates should be coalesced
+        start = len([1])
+        count = 0
+        for i in range(100):
+            await c.send(type="invoke", panel="audio", action="setVolume", args={"volume": i / 100})
+        deadline = time.monotonic() + 1.5
+        while time.monotonic() < deadline:
+            try:
+                m = await c.recv(max(0.01, deadline - time.monotonic()))
+                if m["type"] == "state" and m["topic"] == "audio":
+                    count += 1
+            except asyncio.TimeoutError:
+                break
+        check(abs(c.states["audio"]["output"]["volume"] - 0.99) < 1e-6 and count < 60,
+              f"100 slider updates → {count} coalesced state frames, final volume correct")
+
+        art = c.states["media"]["artwork"]
+        check(isinstance(art, str) and art.startswith("/assets/"), "media artwork is an asset path")
+        base = f"http://{a.host}:{a.port}"
+        req = urllib.request.Request(base + art, headers={"Authorization": f"Bearer {token}"})
+        body = urllib.request.urlopen(req).read()
+        check(body[:4] == b"\x89PNG", f"asset fetch with token ({len(body)} bytes)")
+        try:
+            urllib.request.urlopen(base + art)
+            check(False, "asset without token rejected")
+        except urllib.error.HTTPError as e:
+            check(e.code == 401, "asset without token → 401")
+
+        if a.deck_file:
+            text = open(a.deck_file, encoding="utf-8").read()
+            open(a.deck_file, "w", encoding="utf-8").write(text.replace('"title": "Main"', '"title": "Main (edited)"', 1))
+            await c.until(lambda m: m["type"] == "state" and m["topic"] == "deck" and m["data"]["pages"][0]["title"] == "Main (edited)", timeout=5, what="deck hot reload")
+            check(True, "deck.json edit hot-reloads")
+            open(a.deck_file, "w", encoding="utf-8").write("{ broken")
+            await c.until(lambda m: m["type"] == "state" and m["topic"] == "deck" and m["data"]["error"], timeout=5, what="deck error")
+            check(c.states["deck"]["pages"][0]["title"] == "Main (edited)", "broken deck.json keeps last good pages + reports error")
+            open(a.deck_file, "w", encoding="utf-8").write(text)
+            await c.until(lambda m: m["type"] == "state" and m["topic"] == "deck" and not m["data"]["error"], timeout=5, what="deck restore")
+            check(True, "restored deck.json clears the error")
+
+    async with websockets.connect(url) as ws:
+        c = Client(ws)
+        await c.recv()
+        await c.send(type="hello", token=token, client={"name": "smoke"})
+        m = await c.recv()
+        check(m["type"] == "welcome", "reconnect with saved token → welcome")
+        await c.send(type="ping")
+        m = await c.until(lambda m: m["type"] == "pong", what="pong")
+        check(True, "ping/pong")
+
+    print("\nall checks passed")
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=47610)
+    p.add_argument("--code", required=True)
+    p.add_argument("--deck-file")
+    asyncio.run(main(p.parse_args()))

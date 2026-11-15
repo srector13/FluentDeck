@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+publish/
+
+# Xcode
+ipad/FluentDeck.xcodeproj/
+ipad/FluentDeck/Info.plist
+DerivedData/
+xcuserdata/
+*.xcworkspace
+
+.DS_Store
+__pycache__/
+
+# CI outputs
+dd/
+dd-sim/
+*.xcresult
+screenshots/
+host-out/
+output/
+Payload/

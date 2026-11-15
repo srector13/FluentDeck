@@ -1,0 +1,175 @@
+name: CI
+
+# Every push:
+#   host  — builds the DevHost, runs the protocol smoke test against it, and
+#           cross-compiles the Windows tray host (win-arm64 and win-x64).
+#   ipad  — generates the Xcode project, starts the DevHost on the runner, runs
+#           the screenshot UI tests on an iPad simulator against it, and builds
+#           the unsigned Release device app that build-ipa.yml packages.
+#           Screenshots are uploaded as the fluentdeck-screenshots-N artifact.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '**'
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build DevHost
+        run: dotnet build host/FluentDeck.DevHost -c Release
+
+      - name: Protocol smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install --quiet websockets
+          export FLUENTDECK_HOME="$RUNNER_TEMP/fd" FLUENTDECK_PAIR_CODE=123456
+          dotnet run --no-build -c Release --project host/FluentDeck.DevHost > devhost.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -s -o /dev/null http://127.0.0.1:47610/ && break
+            sleep 1
+          done
+          python3 host/tools/smoke_test.py --code 123456 --deck-file "$FLUENTDECK_HOME/deck.json"
+
+      - name: Cross-compile Windows host
+        run: |
+          dotnet publish host/FluentDeck.Host -c Release -r win-arm64 -p:PublishSingleFile=true -p:SelfContained=true -o publish/win-arm64
+          dotnet publish host/FluentDeck.Host -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -o publish/win-x64
+
+      - name: Upload DevHost log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devhost-log-${{ github.run_number }}
+          path: devhost.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  ipad:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Diagnostics
+        continue-on-error: true
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available | grep -i ipad || true
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ipad
+        run: xcodegen generate
+
+      - name: Start DevHost
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet build host/FluentDeck.DevHost -c Release
+          export FLUENTDECK_HOME="$RUNNER_TEMP/fd" FLUENTDECK_PAIR_CODE=123456
+          nohup dotnet run --no-build -c Release --project host/FluentDeck.DevHost > devhost.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -s -o /dev/null http://127.0.0.1:47610/; then echo "DevHost is up"; exit 0; fi
+            sleep 1
+          done
+          echo "::error::DevHost did not start"; cat devhost.log; exit 1
+
+      - name: Boot iPad simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, re, sys
+          preferred = ["iPad Pro 13-inch (M5)", "iPad Pro 13-inch (M4)", "iPad Air 13-inch (M3)", "iPad Air 13-inch (M2)", "iPad Pro 11-inch (M5)", "iPad Pro 11-inch (M4)"]
+          best = None
+          for runtime, devices in json.load(sys.stdin)["devices"].items():
+              match = re.search(r"iOS-(\d+)-(\d+)(?:-(\d+))?$", runtime)
+              if not match:
+                  continue
+              version = tuple(int(part or 0) for part in match.groups())
+              for device in devices:
+                  name = device["name"]
+                  if not name.startswith("iPad"):
+                      continue
+                  rank = preferred.index(name) if name in preferred else len(preferred)
+                  key = (-rank, version)
+                  if best is None or key > best[0]:
+                      best = (key, device["udid"], name)
+          print(best[1] if best else "")
+          ')
+          [ -n "$UDID" ] || { echo "::error::No iPad simulator found"; exit 1; }
+          echo "Booting $UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 || true
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Screenshot tests
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ipad/FluentDeck.xcodeproj -scheme FluentDeck \
+            -destination "platform=iOS Simulator,id=$SIM_UDID" \
+            -derivedDataPath ./dd-sim -resultBundlePath ui.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee ui-tests.log
+
+      - name: Export screenshots
+        if: always()
+        shell: bash
+        run: |
+          [ -d ui.xcresult ] || exit 0
+          python3 scripts/export_screenshots.py ui.xcresult screenshots || true
+          ls -la screenshots || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluentdeck-screenshots-${{ github.run_number }}
+          path: screenshots/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Release device build (unsigned)
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ipad/FluentDeck.xcodeproj -scheme FluentDeck -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath ./dd \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            2>&1 | tee device-build.log
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipad-logs-${{ github.run_number }}
+          path: |
+            ui-tests.log
+            device-build.log
+            devhost.log
+          if-no-files-found: ignore
+          retention-days: 7

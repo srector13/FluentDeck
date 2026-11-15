@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Cross-platform host with simulated media/audio/system panels and a logging deck executor.
+       Run it on any Mac/Linux/Windows box to develop the iPad app without the real PC:
+         dotnet run (from host/FluentDeck.DevHost) -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FluentDeck.Core\FluentDeck.Core.csproj" />
+  </ItemGroup>
+</Project>

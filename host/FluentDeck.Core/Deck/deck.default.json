@@ -1,0 +1,75 @@
+// FluentDeck buttons. Save this file and the iPad updates instantly.
+//
+// "symbol"  : any SF Symbol name (browse them in Apple's SF Symbols app)
+// "icon"    : path to an .exe/.lnk on this PC — shows the real Windows app icon instead
+// "style"   : "standard" | "accent" (always accent-filled; any button lights up while its "state" is on)
+// "state"   : light the button up when a live value matches, e.g. mic muted
+// "action"  : one of
+//    { "type": "launch",  "target": "C:\\path\\app.exe", "arguments": "...", "workingDirectory": "...", "hidden": false }
+//    { "type": "url",     "target": "https://... or ms-settings: or spotify:" }
+//    { "type": "keys",    "keys": "Win+Shift+S"  (space-separate chords: "Ctrl+K Ctrl+S") }
+//    { "type": "text",    "text": "types this text" }
+//    { "type": "builtin", "panel": "audio", "action": "toggleMicMute", "args": { } }
+//    { "type": "sequence","steps": [ {action}, { "type": "delay", "ms": 250 }, {action} ] }
+{
+  "pages": [
+    {
+      "id": "main",
+      "title": "Main",
+      "buttons": [
+        { "id": "playpause", "label": "Play/Pause", "symbol": "play.fill", "symbolOn": "pause.fill", "style": "accent",
+          "state": { "topic": "media", "path": "status", "equals": "playing" },
+          "action": { "type": "builtin", "panel": "media", "action": "playPause" } },
+        { "id": "next", "label": "Next", "symbol": "forward.fill",
+          "action": { "type": "builtin", "panel": "media", "action": "next" } },
+        { "id": "mute", "label": "Mute", "symbol": "speaker.wave.2", "symbolOn": "speaker.slash",
+          "state": { "topic": "audio", "path": "output.muted", "equals": true },
+          "action": { "type": "builtin", "panel": "audio", "action": "toggleMute" } },
+        { "id": "mic", "label": "Mic", "symbol": "mic", "symbolOn": "mic.slash",
+          "state": { "topic": "audio", "path": "input.muted", "equals": true },
+          "action": { "type": "builtin", "panel": "audio", "action": "toggleMicMute" } },
+        { "id": "snip", "label": "Snip", "symbol": "scissors",
+          "action": { "type": "keys", "keys": "Win+Shift+S" } },
+        { "id": "taskview", "label": "Task View", "symbol": "rectangle.on.rectangle",
+          "action": { "type": "keys", "keys": "Win+Tab" } },
+        { "id": "desktop", "label": "Desktop", "symbol": "macwindow.on.rectangle",
+          "action": { "type": "keys", "keys": "Win+D" } },
+        { "id": "lock", "label": "Lock", "symbol": "lock",
+          "action": { "type": "builtin", "panel": "system", "action": "lock" } },
+        { "id": "explorer", "label": "Explorer", "symbol": "folder", "icon": "%WINDIR%\\explorer.exe",
+          "action": { "type": "launch", "target": "explorer.exe" } },
+        { "id": "terminal", "label": "Terminal", "symbol": "apple.terminal",
+          "action": { "type": "launch", "target": "wt.exe" } },
+        { "id": "settings", "label": "Settings", "symbol": "gearshape",
+          "action": { "type": "url", "target": "ms-settings:" } },
+        { "id": "spotify", "label": "Spotify", "symbol": "music.note",
+          "action": { "type": "url", "target": "spotify:" } }
+      ]
+    },
+    {
+      "id": "dev",
+      "title": "Dev",
+      "buttons": [
+        { "id": "code", "label": "VS Code", "symbol": "chevron.left.forwardslash.chevron.right",
+          "action": { "type": "launch", "target": "code" , "hidden": true } },
+        { "id": "taskmgr", "label": "Task Mgr", "symbol": "chart.bar.xaxis",
+          "action": { "type": "keys", "keys": "Ctrl+Shift+Esc" } },
+        { "id": "clipboard", "label": "Clipboard", "symbol": "list.clipboard",
+          "action": { "type": "keys", "keys": "Win+V" } },
+        { "id": "emoji", "label": "Emoji", "symbol": "face.smiling",
+          "action": { "type": "keys", "keys": "Win+." } },
+        { "id": "claude", "label": "Claude", "symbol": "sparkles",
+          "action": { "type": "url", "target": "https://claude.ai" } },
+        { "id": "github", "label": "GitHub", "symbol": "globe",
+          "action": { "type": "url", "target": "https://github.com" } },
+        { "id": "screen-off", "label": "Screen Off", "symbol": "display",
+          "action": { "type": "builtin", "panel": "system", "action": "displayOff" } },
+        { "id": "focus", "label": "Focus", "symbol": "moon",
+          "action": { "type": "sequence", "steps": [
+            { "type": "builtin", "panel": "media", "action": "pause" },
+            { "type": "builtin", "panel": "audio", "action": "toggleMute" },
+            { "type": "keys", "keys": "Win+D" } ] } }
+      ]
+    }
+  ]
+}

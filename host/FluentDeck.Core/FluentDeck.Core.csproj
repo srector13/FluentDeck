@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Platform-neutral heart of the host: protocol, hub, auth, assets, panel model, deck.
+       Shared by the real Windows host and the cross-platform DevHost. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>FluentDeck.Core</RootNamespace>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <EmbeddedResource Include="Deck\deck.default.json" LogicalName="FluentDeck.Core.Deck.deck.default.json" />
+  </ItemGroup>
+</Project>
