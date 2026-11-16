@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// WinUI Slider: thin rail, accent fill, and the signature thumb — a solid disc with an accent dot
+/// WinUI Slider: a faint rail, accent fill, and the signature thumb — a solid disc with an accent dot
 /// that grows while you hold it. Drag anywhere on the track (44 pt tall touch area).
 struct FluentSlider: View {
     @Binding var value: Double
@@ -23,7 +23,7 @@ struct FluentSlider: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(theme.controlStrongFill)
+                    .fill(theme.controlStrongFill.opacity(0.32))
                     .frame(height: track)
                     .padding(.horizontal, thumb / 2)
                 Capsule()
@@ -33,7 +33,6 @@ struct FluentSlider: View {
                 ZStack {
                     Circle()
                         .fill(theme.controlSolidFill)
-                        .overlay(Circle().strokeBorder(theme.controlStrokeTop, lineWidth: 1))
                         .shadow(color: .black.opacity(theme.isDark ? 0.3 : 0.12), radius: 2, y: 1)
                     Circle()
                         .fill(enabled ? theme.accent : theme.textDisabled)

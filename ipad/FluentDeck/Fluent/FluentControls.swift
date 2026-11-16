@@ -3,7 +3,7 @@ import UIKit
 
 // MARK: - Buttons
 
-/// WinUI Button / AccentButton / subtle (AppBarButton-style) button, with elevation borders and pressed states.
+/// Standard, accent and subtle (icon-bar) buttons: soft fills with pressed states, no outlines.
 struct FluentButtonStyle: ButtonStyle {
     enum Kind { case standard, accent, subtle }
     var kind: Kind = .standard
@@ -25,7 +25,7 @@ private struct FluentButtonBody: View {
 
     var body: some View {
         let pressed = configuration.isPressed
-        let shape = RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .circular)
+        let shape = RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous)
         configuration.label
             .font(FluentFont.body)
             .lineLimit(1)
@@ -33,20 +33,8 @@ private struct FluentButtonBody: View {
             .padding(.horizontal, compact ? 8 : 16)
             .frame(minWidth: compact ? 36 : 44, maxWidth: fill ? .infinity : nil, minHeight: compact ? 36 : Fluent.touchTarget)
             .background(shape.fill(background(pressed)))
-            .overlay {
-                if kind != .subtle {
-                    shape.strokeBorder(LinearGradient(colors: borderColors, startPoint: .top, endPoint: .bottom), lineWidth: 1)
-                }
-            }
             .contentShape(shape)
             .animation(.easeOut(duration: 0.08), value: pressed)
-    }
-
-    private var borderColors: [Color] {
-        switch kind {
-        case .accent: return [Color.white.opacity(0.08), Color.black.opacity(theme.isDark ? 0.14 : 0.4)]
-        default: return [theme.controlStrokeTop, theme.controlStrokeBottom]
-        }
     }
 
     private func background(_ pressed: Bool) -> Color {
@@ -140,8 +128,7 @@ struct FluentCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(padding)
-            .background(RoundedRectangle(cornerRadius: Fluent.overlayRadius, style: .circular).fill(theme.cardFill))
-            .overlay(RoundedRectangle(cornerRadius: Fluent.overlayRadius, style: .circular).strokeBorder(theme.cardStroke, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Fluent.overlayRadius, style: .continuous).fill(theme.cardFill))
     }
 }
 
@@ -259,8 +246,7 @@ struct InfoBar: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: Fluent.controlRadius).fill(background))
-        .overlay(RoundedRectangle(cornerRadius: Fluent.controlRadius).strokeBorder(theme.cardStroke, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous).fill(background))
     }
 
     private var symbol: String {
@@ -313,7 +299,7 @@ struct FluentTextBox: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .circular)
+        let shape = RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous)
         TextField(placeholder, text: $text)
             .focused($focused)
             .keyboardType(keyboard)
@@ -332,7 +318,6 @@ struct FluentTextBox: View {
                     .frame(height: focused ? 2 : 1)
             }
             .clipShape(shape)
-            .overlay(shape.strokeBorder(theme.controlStrokeTop, lineWidth: 1))
             .onSubmit(onSubmit)
     }
 }

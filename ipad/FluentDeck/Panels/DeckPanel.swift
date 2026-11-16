@@ -50,8 +50,8 @@ struct DeckPanel: View {
 /// (by area) without scrolling, unless deck.json fixes `columns`.
 private enum DeckLayout {
     static let gap: CGFloat = 16
-    static let rowGap: CGFloat = 14
-    static let labelGap: CGFloat = 8
+    static let rowGap: CGFloat = 12
+    static let labelGap: CGFloat = 9
     static let labelHeight: CGFloat = 18
     /// Height of a quick settings tile relative to its width.
     static let aspect: CGFloat = 0.87
@@ -116,13 +116,14 @@ private struct DeckGrid: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollDisabled(!fit.scrolls)
+            .scrollClipDisabled(!fit.scrolls) // a lit key's glow isn't cut off at the edge
             .scrollIndicators(.hidden)
         }
     }
 }
 
-/// A deck key drawn as a quick settings toggle: a tile with its label underneath, filled with
-/// the accent while it is on.
+/// A deck key drawn as a quick settings toggle: a soft, borderless tile with its label underneath.
+/// While it is on it fills with the accent and glows.
 private struct DeckKey: View {
     let ctx: PanelContext
     let button: DeckButtonModel
@@ -143,13 +144,18 @@ private struct DeckKey: View {
     var body: some View {
         let on = isOn
         let lit = on || button.style == "accent"
-        let shape = RoundedRectangle(cornerRadius: Fluent.tileRadius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: min(Fluent.tileRadius, tile.height * 0.2), style: .continuous)
         let glyph = min(max(tile.height * 0.3, 18), 44)
         Button(action: press) {
             VStack(spacing: DeckLayout.labelGap) {
                 ZStack {
-                    shape.fill(lit ? theme.accent : theme.controlFill)
-                    shape.strokeBorder(failed ? theme.critical : theme.controlStrokeTop, lineWidth: failed ? 2 : 1)
+                    if lit {
+                        shape.fill(theme.accent)
+                            .shadow(color: theme.accent.opacity(0.45), radius: 22)
+                    } else {
+                        shape.fill(theme.tileFill)
+                    }
+                    if failed { shape.strokeBorder(theme.critical, lineWidth: 2) }
                     if let icon = button.icon {
                         RemoteImage(path: icon, contentMode: .fit) {
                             Image(systemName: button.symbol ?? "app").font(.system(size: glyph))
@@ -168,7 +174,7 @@ private struct DeckKey: View {
                 }
                 Text(button.label)
                     .font(.system(size: 13))
-                    .foregroundStyle(theme.textPrimary)
+                    .foregroundStyle(lit ? theme.textPrimary : theme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                     .frame(width: tile.width, height: DeckLayout.labelHeight)

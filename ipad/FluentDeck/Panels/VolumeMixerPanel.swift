@@ -46,7 +46,7 @@ struct VolumeMixerPanel: View {
     /// Wide panels lay the rows out two across.
     private func full(_ a: AudioState) -> some View {
         let twoUp = ctx.size == .wide || ctx.size == .banner
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 28), count: twoUp ? 2 : 1)
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 36), count: twoUp ? 2 : 1)
         return GeometryReader { g in
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 2) {
@@ -159,5 +159,6 @@ private struct VolumeRow: View {
             ZStack { if let trailing { trailing } }
                 .frame(width: 36)
         }
+        .padding(.leading, -8) // the icon, not its touch target, lines up with the widget's edge
     }
 }

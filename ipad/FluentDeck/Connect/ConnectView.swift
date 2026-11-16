@@ -148,8 +148,7 @@ struct SettingsCard<Trailing: View>: View {
         .padding(.horizontal, 16)
         .frame(minHeight: 68)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Fluent.controlRadius).fill(theme.cardFill))
-        .overlay(RoundedRectangle(cornerRadius: Fluent.controlRadius).strokeBorder(theme.cardStroke, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Fluent.overlayRadius, style: .continuous).fill(theme.cardFill))
     }
 }
 

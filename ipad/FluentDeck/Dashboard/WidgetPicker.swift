@@ -11,10 +11,9 @@ struct WidgetPicker: View {
 
     var body: some View {
         ContentDialog(title: "Add widgets", maxWidth: 820) {
-            HStack(alignment: .top, spacing: 20) {
+            HStack(alignment: .top, spacing: 28) {
                 list
                     .frame(width: 230)
-                Rectangle().fill(theme.divider).frame(width: 1)
                 if let spec { detail(spec) }
             }
             .frame(height: 440)
@@ -44,7 +43,7 @@ struct WidgetPicker: View {
                         .foregroundStyle(isAvailable(s) ? theme.textPrimary : theme.textDisabled)
                         .padding(.horizontal, 12)
                         .frame(height: 44)
-                        .background(RoundedRectangle(cornerRadius: Fluent.controlRadius).fill(isSelected ? theme.subtleFillSecondary : .clear))
+                        .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous).fill(isSelected ? theme.subtleFillSecondary : .clear))
                         .overlay(alignment: .leading) {
                             // NavigationView selection pill
                             if isSelected { Capsule().fill(theme.accent).frame(width: 3, height: 16) }

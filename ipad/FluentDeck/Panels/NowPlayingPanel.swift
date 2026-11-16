@@ -50,13 +50,15 @@ struct NowPlayingPanel: View {
     }
 
     /// The Windows media flyout, stood upright: source, cover, title, scrubber, transport.
+    /// The cover throws its colours onto the black around it.
     private func tall(_ m: MediaState) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             SourcePicker(ctx: ctx, media: m)
-            Artwork(path: m.artwork)
+            Artwork(path: m.artwork, radius: Fluent.artRadius, glow: true)
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.top, 6)
+                .zIndex(-1) // its glow falls behind the text above and below
             Text(m.title ?? "Unknown title")
                 .font(FluentFont.subtitle)
                 .foregroundStyle(theme.textPrimary)
@@ -106,6 +108,9 @@ struct NowPlayingPanel: View {
 
 private struct Artwork: View {
     let path: String?
+    var radius: CGFloat = 14
+    /// A soft halo of the cover's own colours behind it.
+    var glow = false
     @Environment(\.fluent) private var theme
 
     var body: some View {
@@ -115,8 +120,16 @@ private struct Artwork: View {
                 Image(systemName: "music.note").font(.system(size: 28, weight: .light)).foregroundStyle(theme.textTertiary)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .circular))
-        .overlay(RoundedRectangle(cornerRadius: 6, style: .circular).strokeBorder(theme.cardStroke, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .background {
+            if glow, path != nil {
+                RemoteImage(path: path)
+                    .blur(radius: 48)
+                    .saturation(1.3)
+                    .opacity(0.5)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
 

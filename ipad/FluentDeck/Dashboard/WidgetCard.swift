@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// The panel around every widget: a quick settings flyout surface with a hairline border.
-/// There is no header. While customizing, each panel shows a dashed outline and an options button.
+/// Places a widget on the board. There is no panel: a widget's controls sit straight on the black,
+/// and the space around them is what sets it apart. While customizing, each widget gets a soft
+/// backdrop, a dashed outline and an options button.
 struct WidgetCard: View {
     let tile: TileInstance
     let spec: PanelSpec
     let ctx: PanelContext
     var editing = false
+    /// In the "Add widgets" picker: shown on a black swatch, as it will look on the board.
     var preview = false
     var onResize: (TileSize) -> Void = { _ in }
     var onRemove: () -> Void = {}
@@ -20,7 +22,8 @@ struct WidgetCard: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Fluent.panelRadius, style: .continuous)
-        let bare = spec.chromeless && !preview
+        // The outline sits in the gutter, so it never touches the widget's own edges.
+        let outset = -Fluent.gutter * 0.4
         Group {
             if available {
                 spec.view(ctx)
@@ -30,25 +33,24 @@ struct WidgetCard: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .allowsHitTesting(!editing)
-        .padding(bare ? 6 : Fluent.cardPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
-            if !bare {
-                ZStack {
-                    shape.fill(theme.cardFill)
-                    if let background = spec.background, available { background(ctx).clipShape(shape) }
-                }
+            if let background = spec.background, available { background(ctx) }
+        }
+        .padding(preview ? Fluent.cardPadding : 0)
+        .background {
+            if preview {
+                shape.fill(Color.black)
+            } else if editing {
+                shape.fill(theme.controlFillTertiary).padding(outset)
             }
         }
         .overlay {
             if editing {
-                shape.strokeBorder(theme.accent, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
-            } else if !bare {
-                shape.strokeBorder(theme.cardStroke, lineWidth: 1)
+                shape.strokeBorder(theme.accent.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [2, 7]))
+                    .padding(outset)
             }
         }
-        .clipShape(shape)
-        .contentShape(shape)
+        .contentShape(Rectangle())
         .overlay(alignment: .topTrailing) {
             if editing {
                 FlyoutButton(width: 240, items: menuItems) {
@@ -58,7 +60,7 @@ struct WidgetCard: View {
                         .frame(width: 28, height: 28)
                 }
                 .background(Circle().fill(theme.controlSolidFill))
-                .padding(8)
+                .offset(x: -outset * 0.4, y: outset * 0.4)
                 .accessibilityLabel("Options for \(spec.title)")
             }
         }

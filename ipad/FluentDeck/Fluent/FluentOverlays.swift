@@ -105,7 +105,7 @@ struct MenuFlyoutView: View {
     static let rowHeight: CGFloat = 44
 
     static func estimatedHeight(_ items: [FlyoutItem]) -> CGFloat {
-        items.reduce(CGFloat(8)) { sum, item in
+        items.reduce(CGFloat(12)) { sum, item in
             switch item.kind {
             case .action: return sum + rowHeight
             case .separator: return sum + 9
@@ -159,10 +159,10 @@ struct MenuFlyoutView: View {
             }
         }
         .padding(4)
-        .background(theme.flyoutTint, in: RoundedRectangle(cornerRadius: Fluent.overlayRadius))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Fluent.overlayRadius))
-        .overlay(RoundedRectangle(cornerRadius: Fluent.overlayRadius).strokeBorder(theme.surfaceStroke, lineWidth: 1))
-        .shadow(color: .black.opacity(0.26), radius: 16, y: 8)
+        .padding(2)
+        .background(theme.flyoutTint, in: RoundedRectangle(cornerRadius: Fluent.overlayRadius, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Fluent.overlayRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
     }
 }
 
@@ -177,7 +177,7 @@ private struct MenuRowBody: View {
     @Environment(\.fluent) private var theme
     var body: some View {
         configuration.label
-            .background(RoundedRectangle(cornerRadius: 4).fill(configuration.isPressed ? theme.subtleFillSecondary : .clear))
+            .background(RoundedRectangle(cornerRadius: Fluent.overlayRadius - 6, style: .continuous).fill(configuration.isPressed ? theme.subtleFillSecondary : .clear))
     }
 }
 
@@ -202,7 +202,7 @@ struct FlyoutButton<Label: View>: View {
     }
 }
 
-/// WinUI ContentDialog: title, content, and a footer band with equal-width buttons.
+/// A dialog in the WinUI ContentDialog arrangement (title, content, equal-width footer buttons), as one seamless surface.
 struct ContentDialog<Content: View, Footer: View>: View {
     var title: String
     var maxWidth: CGFloat = 480
@@ -218,19 +218,15 @@ struct ContentDialog<Content: View, Footer: View>: View {
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.dialogBody)
-
-            Rectangle().fill(theme.divider).frame(height: 1)
 
             HStack(spacing: 8) { footer() }
-                .padding(24)
+                .padding([.horizontal, .bottom], 24)
                 .frame(maxWidth: .infinity)
-                .background(theme.dialogFooter)
         }
         .frame(maxWidth: maxWidth)
-        .clipShape(RoundedRectangle(cornerRadius: Fluent.overlayRadius))
-        .overlay(RoundedRectangle(cornerRadius: Fluent.overlayRadius).strokeBorder(theme.surfaceStroke, lineWidth: 1))
-        .shadow(color: .black.opacity(0.28), radius: 32, y: 16)
+        .background(theme.dialogBody)
+        .clipShape(RoundedRectangle(cornerRadius: Fluent.overlayRadius + 4, style: .continuous))
+        .shadow(color: .black.opacity(0.5), radius: 40, y: 16)
     }
 }
 

@@ -98,10 +98,8 @@ struct PanelSpec: Identifiable {
     var defaultConfig: [String: String] = [:]
     /// Extra items for the widget's ⋯ menu.
     var menu: @MainActor (PanelContext) -> [FlyoutItem] = { _ in [] }
-    /// Optional full-bleed background behind the card content (e.g. blurred album art).
+    /// Optional layer behind the widget's content. It isn't clipped, so it can spill onto the board.
     var background: (@MainActor (PanelContext) -> AnyView)? = nil
-    /// Draw the widget straight on the board, with no panel behind it (the clock).
-    var chromeless = false
     let view: @MainActor (PanelContext) -> AnyView
 }
 

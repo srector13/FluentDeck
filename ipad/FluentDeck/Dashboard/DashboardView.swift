@@ -1,14 +1,15 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The widget board: board tabs on top, the grid of panels, and the command bar underneath.
+/// The widget board: board tabs on top, the grid of widgets, and the status line underneath.
+/// Everything shares one left and right margin, and nothing is boxed in.
 struct DashboardView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.fluent) private var theme
 
     var body: some View {
         let layout = app.layout
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             BoardBar()
 
             if case .reconnecting = app.connection.phase {
@@ -36,13 +37,14 @@ struct DashboardView: View {
                 }
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.basedOnSize)
+                .scrollClipDisabled() // glows spill past the grid's edge
             }
 
             CommandBar()
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Fluent.margin)
         .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.bottom, 8)
         .animation(.snappy, value: app.connection.phase)
     }
 
@@ -136,19 +138,19 @@ private struct BoardBar: View {
     }
 }
 
-/// The quick settings footer: the PC's battery and load on the left, board actions on the right.
+/// The quick settings footer, without the strip: the PC's battery and load on the left, board
+/// actions on the right.
 private struct CommandBar: View {
     @Environment(AppModel.self) private var app
     @Environment(\.fluent) private var theme
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Fluent.panelRadius, style: .continuous)
         HStack(spacing: 0) {
             SystemStatus()
             Spacer(minLength: 8)
             if app.editing {
                 Button { withAnimation(.snappy) { app.editing = false } } label: { Text("Done") }
-                    .buttonStyle(FluentButtonStyle(kind: .accent, compact: true))
+                    .buttonStyle(FluentButtonStyle(kind: .accent))
                     .padding(.trailing, 8)
             } else {
                 FluentIconButton(symbol: "plus", label: "Add widgets") { app.showWidgetPicker() }
@@ -159,11 +161,8 @@ private struct CommandBar: View {
             }
             .accessibilityLabel("Settings")
         }
-        .padding(.leading, 20)
-        .padding(.trailing, 8)
-        .frame(height: 56)
-        .background(shape.fill(theme.barFill))
-        .overlay(shape.strokeBorder(theme.cardStroke, lineWidth: 1))
+        .padding(.trailing, -16) // the gear's glyph, not its touch target, meets the margin
+        .frame(height: 44)
     }
 
     private func settingsItems() -> [FlyoutItem] {

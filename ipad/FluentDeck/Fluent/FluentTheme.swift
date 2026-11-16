@@ -1,16 +1,19 @@
 import SwiftUI
 
-// "Onyx": Windows 11's dark quick settings flyout, on a true black ground.
-// Colors are the WinUI dark theme resources (e.g. TextFillColorSecondary = #C5FFFFFF), with
-// solid flyout panels instead of Mica; sizes follow WinUI but are scaled up for touch.
+// "Onyx": Windows 11's dark quick settings controls, set straight on a true black ground.
+// Nothing is boxed or ruled: space separates the widgets, and depth comes from soft fills and
+// light (the cover art and lit keys glow) instead of borders. Text colors are the WinUI dark
+// theme resources (e.g. TextFillColorSecondary = #C5FFFFFF); sizes are scaled up for touch.
 
 enum Fluent {
-    static let controlRadius: CGFloat = 6      // WinUI ControlCornerRadius 4, scaled for touch
-    static let overlayRadius: CGFloat = 8      // OverlayCornerRadius: flyouts, dialogs
-    static let tileRadius: CGFloat = 8         // quick settings toggle tiles (deck keys)
-    static let panelRadius: CGFloat = 12       // widget panels and the command bar
+    static let controlRadius: CGFloat = 10     // buttons, text boxes, info bars
+    static let overlayRadius: CGFloat = 18     // flyouts, dialogs
+    static let tileRadius: CGFloat = 24        // deck keys (smaller keys scale it down)
+    static let artRadius: CGFloat = 22         // cover art
+    static let panelRadius: CGFloat = 28       // a widget's outline while customizing
     static let cardPadding: CGFloat = 18
-    static let gutter: CGFloat = 16
+    static let gutter: CGFloat = 32            // between widgets: space does the dividing
+    static let margin: CGFloat = 28            // screen edge; everything lines up on it
     static let touchTarget: CGFloat = 44
     static let rootSpace = "fluent.root"       // coordinate space flyouts anchor in
 }
@@ -74,9 +77,14 @@ struct FluentTheme: Equatable {
     var textDisabled: Color { pick(Self.white(0.363), Self.black(0.361)) }
 
     // Controls
-    var controlFill: Color { pick(Self.white(0.061), Self.white(0.70)) }
-    var controlFillSecondary: Color { pick(Self.white(0.084), Color(white: 0.976, opacity: 0.5)) }
-    var controlFillTertiary: Color { pick(Self.white(0.033), Color(white: 0.976, opacity: 0.3)) }
+    // Stronger than WinUI's: these sit on black, not on a flyout.
+    var controlFill: Color { pick(Self.white(0.09), Self.white(0.70)) }
+    var controlFillSecondary: Color { pick(Self.white(0.12), Color(white: 0.976, opacity: 0.5)) }
+    var controlFillTertiary: Color { pick(Self.white(0.06), Color(white: 0.976, opacity: 0.3)) }
+    /// A deck key: lit softly from above, with no outline.
+    var tileFill: LinearGradient {
+        LinearGradient(colors: [Color(white: 0.16), Color(white: 0.105)], startPoint: .top, endPoint: .bottom)
+    }
     var controlFillInputActive: Color { pick(Color(white: 0.118, opacity: 0.7), .white) }
     var controlStrongFill: Color { pick(Self.white(0.545), Self.black(0.447)) }
     var controlSolidFill: Color { pick(Color(hex: "#454545"), .white) }
@@ -84,23 +92,17 @@ struct FluentTheme: Equatable {
     var subtleFillSecondary: Color { pick(Self.white(0.061), Self.black(0.037)) }
     var subtleFillTertiary: Color { pick(Self.white(0.04), Self.black(0.024)) }
 
-    // Strokes (control elevation border: lighter top, darker bottom)
-    var controlStrokeTop: Color { pick(Self.white(0.093), Self.black(0.059)) }
-    var controlStrokeBottom: Color { pick(Self.white(0.07), Self.black(0.16)) }
+    // Strokes: only where an input needs an edge
     var controlStrongStroke: Color { pick(Self.white(0.545), Self.black(0.447)) }
-    var cardStroke: Color { pick(Self.white(0.08), Self.black(0.059)) }
-    var surfaceStroke: Color { pick(Self.black(0.2), Self.black(0.059)) }
     var divider: Color { pick(Self.white(0.084), Self.black(0.08)) }
 
     // Surfaces
-    var cardFill: Color { pick(Color(hex: "#202020"), Self.white(0.70)) }      // the quick settings flyout
-    var barFill: Color { pick(Color(hex: "#1A1A1A"), Color(hex: "#EEEEEE")) }  // its footer strip
+    var cardFill: Color { pick(Color(hex: "#1C1C1C"), Self.white(0.70)) }
     var cardFillSecondary: Color { pick(Self.white(0.03), Color(white: 0.965, opacity: 0.5)) }
     var layerFill: Color { pick(Color(white: 0.227, opacity: 0.30), Self.white(0.5)) }
     var flyoutTint: Color { pick(Color(hex: "#2C2C2C").opacity(0.96), Color(hex: "#FCFCFC").opacity(0.96)) }
     var dialogFill: Color { pick(Color(hex: "#202020"), .white) }
-    var dialogFooter: Color { pick(Color(hex: "#202020"), Color(hex: "#F3F3F3")) }
-    var dialogBody: Color { pick(Color(hex: "#2B2B2B"), .white) }
+    var dialogBody: Color { pick(Color(hex: "#262626"), .white) }
     var smoke: Color { Self.black(0.3) }
 
     // Status (InfoBar / InfoBadge)

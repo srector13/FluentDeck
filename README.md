@@ -2,7 +2,7 @@
 
 **FluentDeck is a touch controller for your Windows PC that runs on your iPad.** Think of it as Windows 11 crossed with a Stream Deck.
 
-- **On the iPad:** a native SwiftUI app styled after Windows 11's dark quick settings flyout, on a true black ground so the iPad's bezel disappears. Deck keys are quick settings toggle tiles, volume uses WinUI sliders, and a footer bar carries the PC's battery and load. Everything is sized for touch, and the accent color **follows your PC's live**.
+- **On the iPad:** a native SwiftUI app that sets Windows 11's dark quick settings controls straight on a true black ground, so the iPad's bezel disappears. Nothing is boxed or ruled: deck keys are soft toggle tiles, volume uses WinUI sliders, and space separates the widgets. The cover art and lit keys glow onto the black. Everything is sized for touch, and the accent color **follows your PC's live**.
 - **On the PC:** a small tray app (native on Arm64, so it runs natively on your Snapdragon). It exposes media, audio, system stats and a configurable button deck over your LAN.
 
 ```
@@ -23,9 +23,9 @@
 | **Volume Mixer** | S / M / L / Banner / Wide | Master volume, the mic, and a slider for each app with its real Windows icon. Includes an output-device switcher. |
 | **Deck** | S / M / L / Wide / XL | Stream Deck–style keys defined in `deck.json`. They can launch apps and URIs, send hotkeys, type text, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). |
 | **System** | S / M / L | CPU ring, memory, battery and uptime, plus Lock / Sleep / Screen off. |
-| **Clock** | S / M / L | Large, light numerals set straight on the board, with no panel behind them. Runs on the iPad only. It's also the smallest example panel. |
+| **Clock** | S / M / L | Large, light numerals. Runs on the iPad only. It's also the smallest example panel. |
 
-You can set up any number of **boards** (tabs, like Stream Deck profiles). A board fills the screen like a hardware deck: 6 × 4 cells in landscape, 4 × 7 in portrait, and it scrolls only if you pin more than that. The footer bar holds **Add widgets** (+), **Customize** (pencil) and settings (gear). While customizing, each widget shows a **⋯** button for its size, widget-specific options (e.g. which deck page to show) and *Unpin*, and you can drag widgets to reorder them.
+You can set up any number of **boards** (tabs, like Stream Deck profiles). A board fills the screen like a hardware deck: 6 × 4 cells in landscape, 4 × 7 in portrait, and it scrolls only if you pin more than that. The bottom line holds **Add widgets** (+), **Customize** (pencil) and settings (gear). While customizing, each widget shows a dashed outline and a **⋯** button for its size, widget-specific options (e.g. which deck page to show) and *Unpin*, and you can drag widgets to reorder them.
 
 ## Quick start
 
@@ -166,7 +166,7 @@ Reusable Fluent components live in `ipad/FluentDeck/Fluent/`: `FluentButtonStyle
 
 ## Design notes
 
-- **Look:** dark only. The ground is true black; widget panels are the quick settings flyout surface (`#202020`, hairline border). Tokens are WinUI 3's dark theme resources (for example `TextFillColorSecondary` and `ControlFillColorDefault`), mapped in `FluentTheme.swift`, and the accent ramp comes from the PC's `UISettings`.
+- **Look:** dark only, on true black, with no panels, borders or dividers. Widgets are separated by space (a 32 pt gutter against 16 pt inside a widget) and share one screen margin. Corners are large and continuous. Depth comes from soft fills and light: the cover art casts a blurred halo of its own colours, and a lit key glows in the accent. Text tokens are WinUI 3's dark theme resources, mapped in `FluentTheme.swift`, and the accent ramp comes from the PC's `UISettings`.
 - **Sizing for touch:** the type ramp is scaled about 1.15×, every control is at least 44 pt, slider thumbs grow while you hold them, and deck keys respond to presses with scale and haptics.
 - **Fonts and icons:** Segoe UI Variable and Segoe Fluent Icons aren't licensed for iOS, so the app uses SF Pro on the same type ramp and SF Symbols at regular weight. These read very close to Fluent. Icons go through plain symbol-name strings, so swapping in Microsoft's MIT-licensed Fluent UI System Icons later is a contained change.
 - **Grid:** `DashboardGrid` is a custom `Layout` that packs 1×1 to 4×3 tiles first-fit. `DashboardGrid.fit` sizes the cells so 6 × 4 of them (4 × 7 in portrait) fill the screen exactly.

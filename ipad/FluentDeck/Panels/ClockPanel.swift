@@ -7,11 +7,10 @@ struct ClockPanel: View {
     static let spec = PanelSpec(
         kind: "clock",
         title: "Clock",
-        summary: "The time and date in large, light numerals, set straight on the board. Runs on the iPad, so it works offline.",
+        summary: "The time and date in large, light numerals. Runs on the iPad, so it works offline.",
         symbol: "clock",
         sizes: [.small, .medium, .large],
         defaultSize: .medium,
-        chromeless: true,
         view: { AnyView(ClockPanel(ctx: $0)) })
 
     @Environment(\.fluent) private var theme
