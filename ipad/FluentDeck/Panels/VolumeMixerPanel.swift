@@ -42,7 +42,7 @@ struct VolumeMixerPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Quick settings sliders: the output device (with its picker), the microphone, then each app.
+    /// Quick settings sliders: the output device (its name opens the picker), the microphone, then each app.
     /// Wide panels lay the rows out two across.
     private func full(_ a: AudioState) -> some View {
         let twoUp = ctx.size == .wide || ctx.size == .banner
@@ -54,7 +54,13 @@ struct VolumeMixerPanel: View {
                         VolumeRow(symbol: Self.speakerSymbol(out), icon: nil, title: out.name, volume: out.volume, muted: out.muted,
                                   onMute: { ctx.run("audio", "toggleMute") },
                                   onVolume: { v in ctx.send("audio", "setVolume", ["volume": .number(v)]) },
-                                  trailing: AnyView(DevicePicker(ctx: ctx, audio: a)))
+                                  menu: {
+                                      [FlyoutItem.header("Sound output")] + a.devices.map { d in
+                                          FlyoutItem.action(d.name, checked: d.isDefault) {
+                                              ctx.run("audio", "setDefaultDevice", ["id": .string(d.id)])
+                                          }
+                                      }
+                                  })
                     } else {
                         Text("No output device").font(FluentFont.caption).foregroundStyle(theme.textTertiary)
                             .frame(maxWidth: .infinity, minHeight: Fluent.touchTarget, alignment: .leading)
@@ -85,29 +91,6 @@ struct VolumeMixerPanel: View {
     }
 }
 
-/// Output device chooser: the chevron beside the volume slider in quick settings.
-private struct DevicePicker: View {
-    let ctx: PanelContext
-    let audio: AudioState
-    @Environment(\.fluent) private var theme
-
-    var body: some View {
-        FlyoutButton(width: 340, items: {
-            [FlyoutItem.header("Sound output")] + audio.devices.map { d in
-                FlyoutItem.action(d.name, checked: d.isDefault) {
-                    ctx.run("audio", "setDefaultDevice", ["id": .string(d.id)])
-                }
-            }
-        }) {
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(theme.textSecondary)
-                .frame(width: 20, height: 36)
-        }
-        .accessibilityLabel("Sound output")
-    }
-}
-
 private struct VolumeRow: View {
     let symbol: String?
     let icon: String?
@@ -116,9 +99,11 @@ private struct VolumeRow: View {
     let muted: Bool
     let onMute: () -> Void
     let onVolume: (Double) -> Void
-    /// Shown after the value. The slot is always reserved, so sliders line up down a column.
-    var trailing: AnyView? = nil
+    /// When set, the title opens this menu (the output device picker).
+    var menu: (() -> [FlyoutItem])? = nil
     @Environment(\.fluent) private var theme
+    @Environment(OverlayCenter.self) private var overlays
+    @State private var titleFrame: CGRect = .zero
 
     var body: some View {
         HStack(spacing: 6) {
@@ -145,8 +130,27 @@ private struct VolumeRow: View {
             .accessibilityLabel(muted ? "Unmute \(title)" : "Mute \(title)")
 
             VStack(alignment: .leading, spacing: -8) {
-                Text(title).font(.system(size: 12)).foregroundStyle(theme.textSecondary).lineLimit(1)
-                    .padding(.leading, 12)
+                if let menu {
+                    Button { overlays.showFlyout(anchor: titleFrame, items: menu(), width: 340) } label: {
+                        HStack(spacing: 5) {
+                            Text(title).lineLimit(1)
+                            Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+                        }
+                        .font(.system(size: 12))
+                        .foregroundStyle(theme.textSecondary)
+                        .padding(.leading, 12)
+                        .padding(.vertical, 10) // a taller touch target than the text
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .readFrame($titleFrame)
+                    .padding(.vertical, -10)
+                    .zIndex(1)
+                    .accessibilityLabel("Sound output: \(title)")
+                } else {
+                    Text(title).font(.system(size: 12)).foregroundStyle(theme.textSecondary).lineLimit(1)
+                        .padding(.leading, 12)
+                }
                 RemoteSlider(remote: volume, send: onVolume)
             }
 
@@ -156,8 +160,6 @@ private struct VolumeRow: View {
                 .foregroundStyle(muted ? theme.textTertiary : theme.textPrimary)
                 .frame(width: 34, alignment: .trailing)
 
-            ZStack { if let trailing { trailing } }
-                .frame(width: 36)
         }
         .padding(.leading, -8) // the icon, not its touch target, lines up with the widget's edge
     }

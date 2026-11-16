@@ -56,7 +56,7 @@ struct NowPlayingPanel: View {
             SourcePicker(ctx: ctx, media: m)
             Artwork(path: m.artwork, radius: Fluent.artRadius, glow: true)
                 .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .padding(.top, 6)
                 .zIndex(-1) // its glow falls behind the text above and below
             Text(m.title ?? "Unknown title")
@@ -184,6 +184,7 @@ private struct Scrubber: View {
                             scrub = nil
                         }
                     })
+                    .padding(.horizontal, -12) // the rail, not the thumb's travel, spans the widget
                 HStack {
                     Text(Self.format(position))
                     Spacer()
@@ -232,6 +233,7 @@ private struct TransportRow: View {
                 }
             }
         }
+        .padding(.horizontal, prominent ? -18 : 0) // outer glyphs meet the widget's edges
         .frame(maxWidth: .infinity, alignment: prominent ? .center : .leading)
     }
 }

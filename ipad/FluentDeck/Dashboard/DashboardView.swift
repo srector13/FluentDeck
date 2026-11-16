@@ -113,7 +113,7 @@ private struct BoardBar: View {
                 items: layout.boards.map { SelectorBar<UUID>.Item(id: $0.id, title: $0.name) },
                 selection: Binding(get: { layout.selectedBoardID }, set: { layout.selectedBoardID = $0 }),
                 onLongPress: { id, frame in boardMenu(id, frame) })
-                .padding(.leading, -12)
+                .padding(.leading, -20) // the first tab's label, not its touch target, starts on the margin
             FluentIconButton(symbol: "plus", size: 14, tint: theme.textSecondary, label: "New board") {
                 withAnimation(.snappy) { layout.addBoard() }
             }

@@ -48,6 +48,7 @@ struct ClockPanel: View {
                     }
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
+                    .padding(.leading, -size * 0.06) // optical: the numeral's stem meets the margin
                     Text(date, format: .dateTime.weekday(.wide).month(.wide).day())
                         .font(.system(size: max(13, size * 0.12)))
                         .foregroundStyle(theme.textSecondary)

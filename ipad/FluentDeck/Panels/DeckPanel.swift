@@ -46,8 +46,9 @@ struct DeckPanel: View {
     }
 }
 
-/// Sizes the keys so a page fills its panel: the column count that gives the largest tiles
-/// (by area) without scrolling, unless deck.json fixes `columns`.
+/// Sizes the keys so a page fills its widget: the column count that gives the largest tiles
+/// without scrolling, unless deck.json fixes `columns`. Width beyond a key-like shape doesn't
+/// count, so a page becomes a grid of keys rather than a stack of wide bars.
 private enum DeckLayout {
     static let gap: CGFloat = 16
     static let rowGap: CGFloat = 12
@@ -89,7 +90,7 @@ private enum DeckLayout {
         for columns in 1...min(n, 12) {
             let t = tile(columns)
             guard t.width >= 56, t.height >= 44 else { continue }
-            let score = t.width * t.height
+            let score = min(t.width, t.height * 1.6) * t.height
             if score > bestScore {
                 bestScore = score
                 best = Fit(columns: columns, tile: t, scrolls: false)
