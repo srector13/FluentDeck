@@ -39,39 +39,50 @@ final class ScreenshotTests: XCTestCase {
         waitForDashboard(app)
         shot("04-dev-board")
 
-        // 5. Customizing: every panel shows its outline and options button.
+        // 5. Add widgets picker.
+        launch(app, connected(board: 0), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        app.buttons["Add widgets"].firstMatch.tap()
+        sleep(2)
+        shot("05-widget-picker")
+
+        // 6. Portrait.
+        launch(app, connected(board: 0), orientation: .portrait)
+        waitForDashboard(app)
+        shot("06-home-portrait")
+
+        // 7. Customizing: every widget shows its outline and options button, every key a pencil.
         launch(app, connected(board: 0), orientation: .landscapeLeft)
         waitForDashboard(app)
         app.buttons["Customize"].firstMatch.tap()
         XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 10))
         sleep(1)
-        shot("05-customize")
+        shot("07-customize")
 
-        // 6. Editing a key: tap it while customizing.
+        // 8. Editing a key: tap it while customizing.
         app.buttons["Snip"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Edit key"].waitForExistence(timeout: 15), "Key editor did not open")
+        let editorTitle = app.staticTexts["Edit key"]
+        XCTAssertTrue(editorTitle.waitForExistence(timeout: 15), "Key editor did not open")
         sleep(2)
-        shot("06-key-editor-hotkey")
+        shot("08-key-editor-hotkey")
 
-        // 7. Pointing the key at an app instead, from the PC's own list.
+        // 9. Pointing the key at an app instead, from the PC's own list.
         app.buttons["Open app"].firstMatch.tap()
         let figma = app.buttons["Figma"].firstMatch // near the top of the DevHost's app list
         XCTAssertTrue(figma.waitForExistence(timeout: 15), "App list did not load")
         figma.tap()
         sleep(2)
-        shot("07-key-editor-app")
+        shot("09-key-editor-app")
 
-        // 8. Add widgets picker.
-        launch(app, connected(board: 0), orientation: .landscapeLeft)
-        waitForDashboard(app)
-        app.buttons["Add widgets"].firstMatch.tap()
-        sleep(2)
-        shot("08-widget-picker")
-
-        // 9. Portrait.
-        launch(app, connected(board: 0), orientation: .portrait)
-        waitForDashboard(app)
-        shot("09-home-portrait")
+        // 10. Saving it: the PC accepts the key and the board shows its new icon. This stays last,
+        // because it changes the DevHost's deck for the rest of the run.
+        app.buttons["Save"].firstMatch.tap()
+        let closed = NSPredicate(format: "exists == false")
+        expectation(for: closed, evaluatedWith: editorTitle)
+        waitForExpectations(timeout: 15)
+        app.buttons["Done"].firstMatch.tap()
+        sleep(3)
+        shot("10-key-saved")
     }
 
     // MARK: helpers
