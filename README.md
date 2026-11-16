@@ -21,7 +21,7 @@
 |---|---|---|
 | **Now Playing** | M / L / Tall / Wide | Album art, title and artist, a scrubber, shuffle/repeat, and a picker when several apps are playing. It reads Windows' media transport controls (the same source as the Quick Settings media flyout), so it works with Spotify, Apple Music, browsers, VLC and others without per-app code. |
 | **Volume Mixer** | S / M / L / Banner / Wide | Master volume, the mic, and a slider for each app with its real Windows icon. Includes an output-device switcher. |
-| **Deck** | S / M / L / Wide / XL | Stream Deck–style keys defined in `deck.json`. They can launch apps and URIs, send hotkeys, type text, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). |
+| **Deck** | S / M / L / Wide / XL | Stream Deck–style keys. They can launch apps and URIs, send hotkeys, type text, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). Edit them on the iPad or in `deck.json`. |
 | **System** | S / M / L | CPU ring, memory, battery and uptime, plus Lock / Sleep / Screen off. |
 | **Clock** | S / M / L | Large, light numerals. Runs on the iPad only. It's also the smallest example panel. |
 
@@ -41,8 +41,8 @@ dotnet publish FluentDeck.Host -c Release -r win-arm64 -p:PublishSingleFile=true
 
 - The first time it runs, the pairing window opens. Later, click the tray icon (or use **Pair new device…** in its menu).
 - If Windows Firewall prompts you, allow **Private networks**. You can also use the tray menu: **Allow through Windows Firewall…**.
-- The tray menu also has **Start with Windows**, **Edit deck buttons (deck.json)** and **Paired devices** (where you can revoke access).
-- Data lives in `%LOCALAPPDATA%\FluentDeck`: `deck.json`, `host.json` (port, display name), `devices.json` (token hashes), and `host.log`.
+- The tray menu also has **Start with Windows**, **Allow editing keys from the iPad**, **Edit deck buttons (deck.json)** and **Paired devices** (where you can revoke access).
+- Data lives in `%LOCALAPPDATA%\FluentDeck`: `deck.json`, `host.json` (port, display name, `allowDeckEditing`), `devices.json` (token hashes), `icons\` (key images sent from the iPad), and `host.log`.
 
 ### 2. Build the iPad app
 
@@ -85,6 +85,22 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 
 ## Editing the deck
 
+### On the iPad
+
+1. On the PC, turn on **Allow editing keys from the iPad** in the FluentDeck tray menu. It is off by default because a key can launch any program.
+2. On the iPad, tap the pencil (**Customize**), then tap a key. To add one, open the deck's **⋯** menu and choose **Add key…**.
+
+For each key you set:
+
+- **Label**: the name under the key.
+- **When pressed**: open an app (picked from the PC's Start menu shortcuts, or a path or command you type), send a hotkey (modifier toggles plus a key, or several steps), open a link or app URI, type text, or use a built-in PC control such as play/pause, mute, lock or sleep.
+- **Icon**: an SF Symbol, the app's own Windows icon, or a photo from the iPad that fills the key.
+- **Always lit**: fill the key with the accent.
+
+The editor also moves and deletes keys. The **⋯** menu adds, renames and deletes pages. Multi-step keys keep their steps and can only be re-labelled and re-iconed here; change their steps in `deck.json`. Store apps have no Start menu shortcut file, so they are not in the app list: use a **Link** such as `spotify:` or type a command such as `wt.exe`.
+
+### In deck.json
+
 Open `deck.json` from the tray menu. **Save it and the iPad updates instantly.** If the JSON is invalid, the iPad keeps your last good buttons and shows an InfoBar with the parse error.
 
 ```jsonc
@@ -103,7 +119,7 @@ Open `deck.json` from the tray menu. **Save it and the iPad updates instantly.**
 ```
 
 Action types: `launch`, `url`, `keys` (`Win+Shift+S`; separate chords with spaces, as in `Ctrl+K Ctrl+S`), `text`, `builtin` (any host panel action), `sequence`, `delay`.
-`symbol` takes any SF Symbol name. `icon` takes any .exe/.lnk path and shows that program's real Windows icon.
+`symbol` takes any SF Symbol name. `icon` takes any .exe/.lnk path and shows that program's real Windows icon, or a .png/.jpg image that fills the key (photos chosen on the iPad are saved under `icons\` in the data folder). Edits made on the iPad rewrite this file, so comments you add to it are replaced by a short header.
 
 ## Adding a widget panel
 
@@ -174,7 +190,7 @@ Reusable Fluent components live in `ipad/FluentDeck/Fluent/`: `FluentButtonStyle
 ## Security model
 
 - The PC only accepts paired devices. Pairing uses a 6-digit code shown on the PC that expires after 3 minutes and allows 5 attempts. Paired iPads hold a 256-bit token in their Keychain, and the PC stores only its SHA-256 hash. You can revoke a device from the tray.
-- **The iPad can't run arbitrary commands.** It can press deck buttons and call named panel actions; what a button does is defined only in `deck.json` on the PC.
+- **By default the iPad can't run arbitrary commands.** It can press deck buttons and call named panel actions; what a button does is defined only in `deck.json` on the PC. If you turn on **Allow editing keys from the iPad**, paired devices can change `deck.json`, which means they can make the PC launch any program. Leave it off unless you trust every paired device.
 - Traffic is plain `ws://` on your LAN, which is fine for a home network. Don't expose port 47610 to the internet.
 
 ## Status and verification

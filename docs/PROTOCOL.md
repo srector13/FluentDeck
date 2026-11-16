@@ -45,9 +45,31 @@ bursts to ~30 per second per topic.
 |----------|------------------------|---------|
 | `media`  | `hasSession, source{appId,name}, title, artist, album, artwork, status, position, duration, positionAt, canPlay/canPause/canNext/canPrevious/canSeek/canShuffle/canRepeat, shuffle, repeat, sessions[]` | `playPause play pause next previous seek{seconds} shuffle{on} repeat{mode} selectSession{appId}` |
 | `audio`  | `output{id,name,volume,muted}, input{…}, devices[{id,name,isDefault}], sessions[{id,name,icon,volume,muted,active}]` | `setVolume{volume} toggleMute setMicVolume{volume} toggleMicMute setSessionVolume{id,volume} toggleSessionMute{id} setDefaultDevice{id}` |
-| `deck`   | `pages[{id,title,columns,buttons[{id,label,symbol,icon,state{topic,path,equals},symbolOn,style}]}]` | `press{buttonId}` |
+| `deck`   | `pages[{id,title,columns,buttons[{id,label,symbol,icon,iconFill,state{topic,path,equals},symbolOn,style,kind}]}], error, editable` | `press{buttonId} reload` and, when `editable`, the edit actions below |
 | `system` | `hostName, cpu, memory, memoryUsedGb, memoryTotalGb, battery{percent,charging}?, uptimeSeconds` | `lock sleep displayOff` |
 | `theme`  | `isDark, accent, accentLight1..3, accentDark1..3` (hex `#RRGGBB`) | — |
+
+### Editing deck keys
+
+Off by default. The PC turns it on with **Allow editing keys from the iPad** in the tray menu
+(`allowDeckEditing` in `host.json`); the deck state then carries `editable: true`. With it on, a
+paired device can define what keys launch, so only enable it for devices you trust. Every edit
+rewrites `deck.json`. A button's `id` is `<pageId>/<buttonId>`.
+
+| action | args | result |
+|---|---|---|
+| `getButton` | `buttonId` | `{pageId, index, count, button, iconAsset}`: `button` is the key as stored in deck.json |
+| `saveButton` | `pageId`, `button`, optional `buttonId` | `{buttonId}`. Without `buttonId` the key is added to the page |
+| `deleteButton` | `buttonId` | |
+| `moveButton` | `buttonId`, `by` (e.g. `-1`, `1`) | |
+| `addPage` | optional `title` | `{pageId}` |
+| `renamePage` | `pageId`, `title` | |
+| `deletePage` | `pageId` | The last page can't be deleted |
+| `listApps` | | `{apps: [{name, path, icon}]}`: Start menu shortcuts, for a `launch` key's `target` and `icon` |
+| `uploadIcon` | `data` (base64 PNG or JPEG, up to 180 KB) | `{icon, iconAsset}`: `icon` is the path to store on a button |
+
+A button's `icon` is either a program (`.exe`, `.lnk`; its Windows icon is shown on the key) or an
+image file (`.png`, `.jpg`; it fills the key, and the state says so with `iconFill`).
 
 `position` is seconds at `positionAt` (unix ms). Clients interpolate while `status == "playing"`.
 Asset fields (`artwork`, `icon`) are paths like `/assets/3f9a…`; null when absent.

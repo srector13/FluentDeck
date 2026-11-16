@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using FluentDeck.Core.Deck;
 using FluentDeck.Core.Hosting;
 using FluentDeck.Host.Interop;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ internal sealed class TrayApp : ApplicationContext
     private readonly Hub _hub;
     private readonly HostPaths _paths;
     private readonly HostSettings _settings;
+    private readonly DeckPanel _deck;
     private readonly SynchronizationContext _ui;
     private PairingForm? _pairing;
 
@@ -24,6 +26,7 @@ internal sealed class TrayApp : ApplicationContext
         _hub = services.GetRequiredService<Hub>();
         _paths = services.GetRequiredService<HostPaths>();
         _settings = services.GetRequiredService<HostSettings>();
+        _deck = services.GetRequiredService<DeckPanel>();
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
 
         var menu = new ContextMenuStrip { ShowImageMargin = false, RenderMode = ToolStripRenderMode.System };
@@ -82,6 +85,9 @@ internal sealed class TrayApp : ApplicationContext
         }
         menu.Items.Add(devices);
         menu.Items.Add(new ToolStripSeparator());
+        var editing = new ToolStripMenuItem("Allow editing keys from the iPad") { Checked = _settings.AllowDeckEditing, CheckOnClick = true };
+        editing.CheckedChanged += (_, _) => SetDeckEditing(editing.Checked);
+        menu.Items.Add(editing);
         menu.Items.Add("Edit deck buttons (deck.json)", null, (_, _) => Open(_paths.DeckFile));
         menu.Items.Add("Open data folder", null, (_, _) => Open(_paths.Root));
         menu.Items.Add("Allow through Windows Firewall…", null, (_, _) => AllowFirewall());
@@ -99,6 +105,17 @@ internal sealed class TrayApp : ApplicationContext
         _pairing.FormClosed += (_, _) => _pairing = null;
         _pairing.Show();
         _pairing.Activate();
+    }
+
+    /// <summary>With this on, a paired device can define what keys launch, so ask before enabling it.</summary>
+    private void SetDeckEditing(bool allow)
+    {
+        if (allow && MessageBox.Show(
+                "Paired devices will be able to add and change keys, including which programs they launch.\n\nOnly turn this on if you trust every paired device.",
+                "FluentDeck", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK) return;
+        _settings.AllowDeckEditing = allow;
+        _settings.Save(_paths);
+        _deck.SettingsChanged();
     }
 
     private void AllowFirewall()

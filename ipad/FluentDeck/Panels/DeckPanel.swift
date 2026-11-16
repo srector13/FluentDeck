@@ -1,26 +1,50 @@
 import SwiftUI
 
-/// The Stream Deck half: a page of buttons defined in deck.json on the PC.
+/// The Stream Deck half: a page of keys defined in deck.json on the PC. While the board is being
+/// customized, tapping a key edits it (if the PC allows that).
 struct DeckPanel: View {
     let ctx: PanelContext
 
     static let spec = PanelSpec(
         kind: "deck",
         title: "Deck",
-        summary: "A grid of buttons from deck.json on your PC — launch apps, send hotkeys, run macros. Edit the file and the buttons update live.",
+        summary: "A grid of keys that launch apps, send hotkeys, open links and run macros on your PC. Tap Customize, then a key, to change it.",
         symbol: "square.grid.3x3",
         requires: "deck",
         sizes: [.small, .medium, .large, .wide, .huge],
         defaultSize: .huge,
         defaultConfig: ["page": "main"],
-        menu: { ctx in
-            guard let deck = ctx.state("deck", as: DeckState.self), !deck.pages.isEmpty else { return [] }
-            let current = DeckPanel.page(in: deck, ctx: ctx)?.id
-            return [FlyoutItem.header("Page")]
-                + deck.pages.map { p in FlyoutItem.action(p.title, checked: p.id == current) { ctx.updateConfig("page", p.id) } }
-                + [FlyoutItem.separator, FlyoutItem.action("Reload deck.json", symbol: "arrow.clockwise") { ctx.run("deck", "reload") }]
-        },
+        menu: { ctx in DeckPanel.menu(ctx) },
+        editsInPlace: true,
         view: { AnyView(DeckPanel(ctx: $0)) })
+
+    /// Pages, and (when the PC allows editing) adding keys and managing pages.
+    static func menu(_ ctx: PanelContext) -> [FlyoutItem] {
+        guard let deck = ctx.state("deck", as: DeckState.self), !deck.pages.isEmpty else { return [] }
+        let current = DeckPanel.page(in: deck, ctx: ctx)
+        let canEdit = DeckEditing.canEdit(ctx, deck)
+        var items: [FlyoutItem] = []
+        if canEdit, let page = current {
+            items.append(.action("Add key…", symbol: "plus") { DeckEditing.editKey(ctx, pageId: page.id, buttonId: nil) })
+            items.append(.separator)
+        }
+        items.append(.header("Page"))
+        items += deck.pages.map { p in FlyoutItem.action(p.title, checked: p.id == current?.id) { ctx.updateConfig("page", p.id) } }
+        if canEdit {
+            items.append(.action("New page", symbol: "plus.rectangle.on.rectangle") { DeckEditing.addPage(ctx) })
+            if let page = current {
+                items.append(.action("Rename page…", symbol: "pencil") { ctx.overlays.present { DeckPageRenameDialog(ctx: ctx, page: page) } })
+                if deck.pages.count > 1 {
+                    items.append(.action("Delete page", symbol: "trash", destructive: true) {
+                        ctx.run("deck", "deletePage", ["pageId": .string(page.id)])
+                    })
+                }
+            }
+        }
+        items.append(.separator)
+        items.append(.action("Reload deck.json", symbol: "arrow.clockwise") { ctx.run("deck", "reload") })
+        return items
+    }
 
     static func page(in deck: DeckState, ctx: PanelContext) -> DeckPageModel? {
         deck.pages.first { $0.id == ctx.config["page"] } ?? deck.pages.first
@@ -35,13 +59,33 @@ struct DeckPanel: View {
                     InfoBar(severity: .warning, title: "deck.json has an error", message: error)
                 }
                 if let page = Self.page(in: deck, ctx: ctx) {
-                    DeckGrid(ctx: ctx, page: page)
+                    if page.buttons.isEmpty {
+                        emptyPage(page, deck)
+                    } else {
+                        DeckGrid(ctx: ctx, page: page, deck: deck)
+                    }
                 } else {
                     PanelEmptyState(symbol: "square.grid.3x3", text: "No pages in deck.json")
                 }
             }
         } else {
             PanelEmptyState(symbol: "square.grid.3x3", text: "Deck unavailable")
+        }
+    }
+}
+
+extension DeckPanel {
+    @ViewBuilder
+    fileprivate func emptyPage(_ page: DeckPageModel, _ deck: DeckState) -> some View {
+        if DeckEditing.canEdit(ctx, deck) {
+            VStack(spacing: 12) {
+                PanelEmptyState(symbol: "square.grid.3x3", text: "No keys on this page yet").frame(maxHeight: 90)
+                Button { DeckEditing.editKey(ctx, pageId: page.id, buttonId: nil) } label: { Label("Add key", systemImage: "plus") }
+                    .buttonStyle(FluentButtonStyle(kind: .accent))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            PanelEmptyState(symbol: "square.grid.3x3", text: "No keys on this page")
         }
     }
 }
@@ -103,6 +147,7 @@ private enum DeckLayout {
 private struct DeckGrid: View {
     let ctx: PanelContext
     let page: DeckPageModel
+    let deck: DeckState
 
     var body: some View {
         GeometryReader { g in
@@ -111,7 +156,7 @@ private struct DeckGrid: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(fit.tile.width), spacing: DeckLayout.gap), count: fit.columns),
                           spacing: DeckLayout.rowGap) {
                     ForEach(page.buttons) { button in
-                        DeckKey(ctx: ctx, button: button, tile: fit.tile)
+                        DeckKey(ctx: ctx, button: button, tile: fit.tile, page: page, deck: deck)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -129,6 +174,8 @@ private struct DeckKey: View {
     let ctx: PanelContext
     let button: DeckButtonModel
     let tile: CGSize
+    let page: DeckPageModel
+    let deck: DeckState
 
     @Environment(\.fluent) private var theme
     @State private var running = false
@@ -147,7 +194,7 @@ private struct DeckKey: View {
         let lit = on || button.style == "accent"
         let shape = RoundedRectangle(cornerRadius: min(Fluent.tileRadius, tile.height * 0.2), style: .continuous)
         let glyph = min(max(tile.height * 0.3, 18), 44)
-        Button(action: press) {
+        Button(action: ctx.editing ? edit : press) {
             VStack(spacing: DeckLayout.labelGap) {
                 ZStack {
                     if lit {
@@ -157,7 +204,12 @@ private struct DeckKey: View {
                         shape.fill(theme.tileFill)
                     }
                     if failed { shape.strokeBorder(theme.critical, lineWidth: 2) }
-                    if let icon = button.icon {
+                    if let icon = button.icon, button.iconFill == true {
+                        // A picture fills the key, as on a Stream Deck.
+                        RemoteImage(path: icon, contentMode: .fill)
+                            .frame(width: tile.width, height: tile.height)
+                            .clipShape(shape)
+                    } else if let icon = button.icon {
                         RemoteImage(path: icon, contentMode: .fit) {
                             Image(systemName: button.symbol ?? "app").font(.system(size: glyph))
                         }
@@ -171,7 +223,16 @@ private struct DeckKey: View {
                 .foregroundStyle(lit ? theme.textOnAccent : theme.textPrimary)
                 .frame(width: tile.width, height: tile.height)
                 .overlay(alignment: .topTrailing) {
-                    if running { FluentProgressRing(size: 12, lineWidth: 2).padding(8) }
+                    if ctx.editing {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(theme.textPrimary)
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(theme.controlSolidFill))
+                            .padding(8)
+                    } else if running {
+                        FluentProgressRing(size: 12, lineWidth: 2).padding(8)
+                    }
                 }
                 Text(button.label)
                     .font(.system(size: 13))
@@ -186,6 +247,15 @@ private struct DeckKey: View {
         .animation(.easeOut(duration: 0.2), value: lit)
         .sensoryFeedback(.impact(weight: .light), trigger: presses)
         .accessibilityLabel(button.label)
+        .accessibilityHint(ctx.editing ? "Edits this key" : "")
+    }
+
+    private func edit() {
+        if let reason = DeckEditing.blocked(ctx, deck) {
+            ctx.connection.report(HostError.action(reason))
+        } else {
+            DeckEditing.editKey(ctx, pageId: page.id, buttonId: button.id)
+        }
     }
 
     private func press() {

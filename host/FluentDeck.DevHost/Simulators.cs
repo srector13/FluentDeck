@@ -15,7 +15,34 @@ internal sealed class LoggingDeckExecutor(ILogger<LoggingDeckExecutor> log) : ID
         return Task.CompletedTask;
     }
 
-    public byte[]? TryGetIcon(string path) => Png.Gradient(64, (0x2B, 0x88, 0xD8), (0x0B, 0x3D, 0x91), rounded: true);
+    /// <summary>A coloured tile per path, so different apps get different stand-in icons.</summary>
+    public byte[]? TryGetIcon(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+        var (top, bottom) = Tints[(int)((uint)name.Aggregate(17, (h, c) => h * 31 + c) % (uint)Tints.Length)];
+        return Png.Gradient(64, top, bottom, rounded: true);
+    }
+
+    private static readonly ((byte, byte, byte) Top, (byte, byte, byte) Bottom)[] Tints =
+    [
+        ((0x2B, 0x88, 0xD8), (0x0B, 0x3D, 0x91)), ((0x1E, 0xD7, 0x60), (0x12, 0x80, 0x3A)),
+        ((0xF2, 0x6B, 0x3A), (0xA8, 0x32, 0x16)), ((0x8E, 0x6B, 0xF2), (0x4B, 0x2F, 0xB0)),
+        ((0xF2, 0xC0, 0x3A), (0xB0, 0x78, 0x10)), ((0xE8, 0x4A, 0x8A), (0x9A, 0x1F, 0x55)),
+    ];
+
+    public IReadOnlyList<DeckApp> ListApps() =>
+    [
+        new("Discord", @"C:\Users\dev\AppData\Local\Discord\Discord.lnk"),
+        new("File Explorer", @"C:\Windows\explorer.exe"),
+        new("Figma", @"C:\Users\dev\AppData\Local\Figma\Figma.lnk"),
+        new("Microsoft Edge", @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"),
+        new("Notepad", @"C:\Windows\notepad.exe"),
+        new("OBS Studio", @"C:\Program Files\obs-studio\bin\64bit\obs64.exe"),
+        new("Spotify", @"C:\Users\dev\AppData\Roaming\Spotify\Spotify.exe"),
+        new("Steam", @"C:\Program Files (x86)\Steam\steam.exe"),
+        new("Visual Studio Code", @"C:\Users\dev\AppData\Local\Programs\Microsoft VS Code\Code.exe"),
+        new("Windows Terminal", @"C:\Users\dev\AppData\Local\Microsoft\WindowsApps\wt.exe"),
+    ];
 }
 
 internal static class Now

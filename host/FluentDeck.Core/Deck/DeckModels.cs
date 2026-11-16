@@ -4,7 +4,9 @@ using System.Text.Json.Serialization;
 namespace FluentDeck.Core.Deck;
 
 // deck.json lives in %LOCALAPPDATA%\FluentDeck and is hot-reloaded on save.
-// Buttons only ever run actions defined here — the iPad can press a button, never send a command.
+// Buttons only ever run actions defined here. By default the iPad can press a button but never
+// define one; turning on "allowDeckEditing" in host.json (the tray menu does it) lets paired
+// devices edit this file through the deck panel's edit actions.
 
 public sealed class DeckConfig
 {
@@ -28,7 +30,8 @@ public sealed class DeckButton
     public string? Symbol { get; set; }
     /// <summary>Symbol to show while <see cref="State"/> is on.</summary>
     public string? SymbolOn { get; set; }
-    /// <summary>Path to an .exe/.lnk/file on the PC; its Windows icon is shown instead of the symbol.</summary>
+    /// <summary>Shown instead of the symbol. Either a path to an .exe/.lnk/file on the PC (its Windows
+    /// icon is used) or an image file (.png/.jpg), absolute or relative to the data folder.</summary>
     public string? Icon { get; set; }
     /// <summary>"standard" (default) or "accent".</summary>
     public string? Style { get; set; }
@@ -74,6 +77,11 @@ public sealed class DeckAction
     public int? Ms { get; set; }
 }
 
+/// <summary>An installed app the iPad can offer when a key is set to launch something.</summary>
+/// <param name="Name">Display name.</param>
+/// <param name="Path">What a "launch" action should target (and what its icon comes from).</param>
+public sealed record DeckApp(string Name, string Path);
+
 /// <summary>Executes the platform-specific action types (launch, url, keys, text).</summary>
 public interface IDeckActionExecutor
 {
@@ -81,4 +89,7 @@ public interface IDeckActionExecutor
 
     /// <summary>PNG bytes of the Windows icon for a file, or null.</summary>
     byte[]? TryGetIcon(string path);
+
+    /// <summary>Apps installed on this PC, for the key editor's app picker.</summary>
+    IReadOnlyList<DeckApp> ListApps() => [];
 }

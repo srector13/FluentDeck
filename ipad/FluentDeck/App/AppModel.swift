@@ -124,6 +124,7 @@ final class AppModel {
             instance: tile,
             connection: connection,
             overlays: overlays,
+            editing: editing && !preview,
             updateConfig: { [weak self] key, value in
                 guard !preview else { return }
                 self?.layout.setConfig(tile.id, key, value)

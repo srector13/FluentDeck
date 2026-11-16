@@ -40,6 +40,31 @@ internal sealed class WindowsDeckExecutor : IDeckActionExecutor
 
     public byte[]? TryGetIcon(string path) => IconExtractor.Png(ResolvePath(path), 64);
 
+    /// <summary>The Start menu's shortcuts, for all users and this one. Launching the shortcut itself
+    /// keeps its arguments and working folder. Store apps have no shortcut file, so they aren't listed.</summary>
+    public IReadOnlyList<DeckApp> ListApps()
+    {
+        string[] skip = ["uninstall", "readme", "read me", "help", "documentation", "website", "license", "release notes"];
+        var apps = new Dictionary<string, DeckApp>(StringComparer.OrdinalIgnoreCase);
+        foreach (var folder in new[] { Environment.SpecialFolder.Programs, Environment.SpecialFolder.CommonPrograms })
+        {
+            var root = Environment.GetFolderPath(folder);
+            if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
+            try
+            {
+                var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+                foreach (var shortcut in Directory.EnumerateFiles(root, "*.lnk", options))
+                {
+                    var name = Path.GetFileNameWithoutExtension(shortcut);
+                    if (skip.Any(word => name.Contains(word, StringComparison.OrdinalIgnoreCase))) continue;
+                    apps.TryAdd(name, new DeckApp(name, shortcut));
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* skip that folder */ }
+        }
+        return apps.Values.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
     private static void Start(ProcessStartInfo info)
     {
         try { Process.Start(info)?.Dispose(); }
@@ -76,9 +101,12 @@ internal static class IconExtractor
         {
             if (Cache.TryGetValue(path, out var cached)) return cached;
             byte[]? png = null;
+            Icon? icon = null;
+            // A program's own icon at the size we want; a shortcut or document falls back to its associated icon.
+            try { icon = Icon.ExtractIcon(path, 0, size); } catch { /* not an icon resource */ }
+            try { icon ??= Icon.ExtractAssociatedIcon(path); } catch { /* no association */ }
             try
             {
-                using var icon = Icon.ExtractIcon(path, 0, size) ?? Icon.ExtractAssociatedIcon(path);
                 if (icon is not null)
                 {
                     using var bmp = icon.ToBitmap();
@@ -87,7 +115,8 @@ internal static class IconExtractor
                     png = ms.ToArray();
                 }
             }
-            catch { /* some files have no icon resource */ }
+            catch { /* some icons can't be drawn */ }
+            finally { icon?.Dispose(); }
             return Cache[path] = png;
         }
     }

@@ -128,6 +128,8 @@ struct DeckButtonModel: Codable, Equatable, Identifiable {
     var symbol: String?
     var symbolOn: String?
     var icon: String?
+    /// The icon is a picture that fills the key, not a program's icon set on it.
+    var iconFill: Bool?
     var style: String
     var state: DeckBinding?
     var kind: String
@@ -143,4 +145,6 @@ struct DeckPageModel: Codable, Equatable, Identifiable {
 struct DeckState: Codable, Equatable {
     var pages: [DeckPageModel]
     var error: String?
+    /// The PC lets paired devices edit keys (off by default; set from its tray menu).
+    var editable: Bool?
 }

@@ -25,6 +25,9 @@ public sealed class HostSettings
     public string? DisplayName { get; set; }
     public int Port { get; set; } = 47610;
     public bool AdvertiseBonjour { get; set; } = true;
+    /// <summary>Let paired devices add, change and remove deck keys. Off by default: with it on,
+    /// a paired device can make this PC launch any program.</summary>
+    public bool AllowDeckEditing { get; set; }
 
     public string Name => string.IsNullOrWhiteSpace(DisplayName) ? Environment.MachineName : DisplayName!;
     public static string Version => typeof(HostSettings).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";
@@ -39,9 +42,11 @@ public sealed class HostSettings
         }
         catch { /* fall through to defaults */ }
         s ??= new HostSettings();
-        File.WriteAllText(paths.SettingsFile, JsonSerializer.Serialize(s, Json));
+        s.Save(paths);
         return s;
     }
+
+    public void Save(HostPaths paths) => File.WriteAllText(paths.SettingsFile, JsonSerializer.Serialize(this, Json));
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 }

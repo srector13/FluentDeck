@@ -32,7 +32,7 @@ struct WidgetCard: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .allowsHitTesting(!editing)
+        .allowsHitTesting(!editing || spec.editsInPlace)
         .background {
             if let background = spec.background, available { background(ctx) }
         }

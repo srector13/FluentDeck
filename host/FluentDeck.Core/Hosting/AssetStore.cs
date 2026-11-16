@@ -10,7 +10,7 @@ public sealed class AssetStore
     private sealed record Entry(byte[] Data, string ContentType, long Touched);
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new();
-    private const int MaxEntries = 300;
+    private const int MaxEntries = 600;
     private const int MaxBytes = 2 * 1024 * 1024;
 
     /// <returns>A path like <c>/assets/3f9a…</c>, or null if the data is empty or too large.</returns>

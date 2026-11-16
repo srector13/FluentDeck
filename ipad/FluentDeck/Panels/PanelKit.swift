@@ -59,6 +59,8 @@ struct PanelContext {
     let instance: TileInstance
     let connection: HostConnection
     let overlays: OverlayCenter
+    /// The board is being customized. A panel that sets `editsInPlace` can offer its own editing.
+    var editing = false
     var updateConfig: (String, String?) -> Void = { _, _ in }
 
     var size: TileSize { instance.size }
@@ -100,6 +102,8 @@ struct PanelSpec: Identifiable {
     var menu: @MainActor (PanelContext) -> [FlyoutItem] = { _ in [] }
     /// Optional layer behind the widget's content. It isn't clipped, so it can spill onto the board.
     var background: (@MainActor (PanelContext) -> AnyView)? = nil
+    /// Stays interactive while the board is customized, to edit its own content (the deck's keys).
+    var editsInPlace = false
     let view: @MainActor (PanelContext) -> AnyView
 }
 

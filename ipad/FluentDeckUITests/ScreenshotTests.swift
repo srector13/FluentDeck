@@ -47,17 +47,31 @@ final class ScreenshotTests: XCTestCase {
         sleep(1)
         shot("05-customize")
 
-        // 6. Add widgets picker.
+        // 6. Editing a key: tap it while customizing.
+        app.buttons["Snip"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Edit key"].waitForExistence(timeout: 15), "Key editor did not open")
+        sleep(2)
+        shot("06-key-editor-hotkey")
+
+        // 7. Pointing the key at an app instead, from the PC's own list.
+        app.buttons["Open app"].firstMatch.tap()
+        let vsCode = app.buttons["Visual Studio Code"].firstMatch // only in the DevHost's app list
+        XCTAssertTrue(vsCode.waitForExistence(timeout: 15), "App list did not load")
+        vsCode.tap()
+        sleep(2)
+        shot("07-key-editor-app")
+
+        // 8. Add widgets picker.
         launch(app, connected(board: 0), orientation: .landscapeLeft)
         waitForDashboard(app)
         app.buttons["Add widgets"].firstMatch.tap()
         sleep(2)
-        shot("06-widget-picker")
+        shot("08-widget-picker")
 
-        // 7. Portrait.
+        // 9. Portrait.
         launch(app, connected(board: 0), orientation: .portrait)
         waitForDashboard(app)
-        shot("07-home-portrait")
+        shot("09-home-portrait")
     }
 
     // MARK: helpers

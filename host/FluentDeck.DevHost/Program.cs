@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 //   FLUENTDECK_HOME       override the data folder (default: <LocalAppData>/FluentDeck-Dev)
 //   FLUENTDECK_PAIR_CODE  use a fixed pairing code that stays valid after each pair (handy for UI tests)
 //   FLUENTDECK_NAME       the PC name shown on the iPad
+//   FLUENTDECK_ALLOW_EDITING  "0" to refuse key edits from the iPad, as a real PC does by default
 
 var home = Environment.GetEnvironmentVariable("FLUENTDECK_HOME")
            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FluentDeck-Dev");
@@ -17,6 +18,8 @@ var settings = HostSettings.Load(paths);
 settings.DisplayName = Environment.GetEnvironmentVariable("FLUENTDECK_NAME") is { Length: > 0 } name
     ? name
     : settings.DisplayName ?? $"{Environment.MachineName} (DevHost)";
+
+settings.AllowDeckEditing = Environment.GetEnvironmentVariable("FLUENTDECK_ALLOW_EDITING") != "0";
 
 var builder = FluentDeckServer.CreateBuilder(args, paths, settings);
 builder.Services.AddSingleton<IDeckActionExecutor, LoggingDeckExecutor>();
