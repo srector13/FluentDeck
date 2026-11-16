@@ -55,9 +55,9 @@ final class ScreenshotTests: XCTestCase {
 
         // 7. Pointing the key at an app instead, from the PC's own list.
         app.buttons["Open app"].firstMatch.tap()
-        let vsCode = app.buttons["Visual Studio Code"].firstMatch // only in the DevHost's app list
-        XCTAssertTrue(vsCode.waitForExistence(timeout: 15), "App list did not load")
-        vsCode.tap()
+        let figma = app.buttons["Figma"].firstMatch // near the top of the DevHost's app list
+        XCTAssertTrue(figma.waitForExistence(timeout: 15), "App list did not load")
+        figma.tap()
         sleep(2)
         shot("07-key-editor-app")
 

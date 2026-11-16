@@ -384,13 +384,14 @@ struct DeckKeyEditor: View {
 
     private var hotkeyFields: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
+            let columns = [GridItem(.adaptive(minimum: 88), spacing: 6)]
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
                 ForEach(DeckHotkey.modifiers, id: \.self) { modifier in
                     DeckChip(title: modifier, on: DeckHotkey.holds(keys, modifier)) { keys = DeckHotkey.toggling(keys, modifier) }
                 }
             }
             FluentTextBox(placeholder: "Win+Shift+S", text: $keys)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 6)], alignment: .leading, spacing: 6) {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
                 ForEach(DeckHotkey.specialKeys, id: \.self) { key in
                     DeckChip(title: key, on: false) { keys = DeckHotkey.settingKey(keys, key) }
                 }
@@ -752,7 +753,7 @@ private struct DeckChip: View {
                 .foregroundStyle(on ? theme.textOnAccent : theme.textPrimary)
                 .lineLimit(1)
                 .padding(.horizontal, 12)
-                .frame(minWidth: 52, minHeight: 36)
+                .frame(minWidth: 52, maxWidth: .infinity, minHeight: 36)
                 .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous)
                     .fill(on ? theme.accent : theme.controlFill))
         }
