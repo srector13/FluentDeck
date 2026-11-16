@@ -76,6 +76,8 @@ public sealed class SystemDetails
         }
     }
 
+    private static readonly string[] MountRoots = ["/Volumes/", "/mnt/", "/media/"];
+
     private static List<DiskInfo> Disks()
     {
         var disks = new List<DiskInfo>();
@@ -88,6 +90,8 @@ public sealed class SystemDetails
                 {
                     // Fixed drives of a real size; the same volume mounted twice counts once.
                     if (!drive.IsReady || drive.DriveType != DriveType.Fixed || drive.TotalSize < 8 * GB) continue;
+                    // Off Windows (the DevHost), keep to the root and mounted disks, not system volumes.
+                    if (!OperatingSystem.IsWindows() && drive.Name != "/" && !MountRoots.Any(root => drive.Name.StartsWith(root, StringComparison.Ordinal))) continue;
                     if (!seen.Add((drive.TotalSize, drive.AvailableFreeSpace))) continue;
                     var name = drive.Name.TrimEnd('\\');
                     disks.Add(new DiskInfo(name.Length == 0 ? drive.Name : name, Math.Round(drive.AvailableFreeSpace / GB, 1), Math.Round(drive.TotalSize / GB, 1)));
