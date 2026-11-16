@@ -15,7 +15,8 @@ final class LayoutStore {
     var boards: [Board] { didSet { save() } }
     var selectedBoardID: UUID? { didSet { save() } }
 
-    private let key = "fluentdeck.layout.v1"
+    nonisolated static let storageKey = "fluentdeck.layout.v2"
+    private let key = LayoutStore.storageKey
 
     private struct Snapshot: Codable {
         var boards: [Board]
@@ -28,19 +29,19 @@ final class LayoutStore {
             boards = snap.boards
             selectedBoardID = snap.selected ?? snap.boards.first?.id
         } else {
+            // Each fills a 6 × 4 landscape board exactly (see DashboardGrid.fit).
             let home = Board(name: "Home", tiles: [
-                TileInstance(kind: NowPlayingPanel.spec.kind, size: .large),
-                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .large),
-                TileInstance(kind: SystemPanel.spec.kind, size: .medium),
-                TileInstance(kind: ClockPanel.spec.kind, size: .small),
-                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .small),
-                TileInstance(kind: DeckPanel.spec.kind, size: .wide, config: ["page": "main"]),
+                TileInstance(kind: NowPlayingPanel.spec.kind, size: .tall),
+                TileInstance(kind: DeckPanel.spec.kind, size: .huge, config: ["page": "main"]),
+                TileInstance(kind: ClockPanel.spec.kind, size: .medium),
+                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .banner),
             ])
             let dev = Board(name: "Dev", tiles: [
-                TileInstance(kind: DeckPanel.spec.kind, size: .wide, config: ["page": "dev"]),
+                TileInstance(kind: DeckPanel.spec.kind, size: .huge, config: ["page": "dev"]),
                 TileInstance(kind: SystemPanel.spec.kind, size: .large),
                 TileInstance(kind: NowPlayingPanel.spec.kind, size: .medium),
-                TileInstance(kind: ClockPanel.spec.kind, size: .small),
+                TileInstance(kind: ClockPanel.spec.kind, size: .medium),
+                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .banner),
             ])
             boards = [home, dev]
             selectedBoardID = home.id

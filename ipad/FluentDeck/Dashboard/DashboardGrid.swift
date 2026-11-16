@@ -9,11 +9,12 @@ extension View {
     func tileSize(_ size: TileSize) -> some View { layoutValue(key: TileSpanKey.self, value: size) }
 }
 
-/// Packs widgets like the Windows 11 widget board: a grid of square-ish cells, each tile spanning
-/// 1×1 … 4×2 cells, placed first-fit in reading order. Column count adapts to the width
-/// (6 on an 11" iPad in landscape, 4 in portrait), so any number of panels flows naturally.
+/// Packs widgets on a board of near-square cells, each tile spanning 1×1 … 4×3 cells, placed
+/// first-fit in reading order. `fit` sizes the cells so a board fills the screen exactly, like a
+/// hardware deck: 6 × 4 cells in landscape and 4 × 7 in portrait. More rows than that scroll.
 struct DashboardGrid: Layout {
-    var minCell: CGFloat = 168
+    var columns: Int
+    var rowHeight: CGFloat
     var spacing: CGFloat = Fluent.gutter
 
     struct Placement {
@@ -22,14 +23,20 @@ struct DashboardGrid: Layout {
         var height: CGFloat = 0
     }
 
-    func columns(for width: CGFloat) -> Int {
-        max(2, Int((width + spacing) / (minCell + spacing)))
+    /// Columns and row height for a board shown in `size`.
+    static func fit(_ size: CGSize, spacing: CGFloat = Fluent.gutter) -> (columns: Int, rowHeight: CGFloat) {
+        if size.width < 600 { // iPhone: two columns that scroll
+            return (2, max(120, (size.width - spacing) / 2 * 0.95))
+        }
+        let landscape = size.width > size.height
+        let rows: CGFloat = landscape ? 4 : 7
+        let height = ((size.height - (rows - 1) * spacing) / rows).rounded(.down)
+        return (landscape ? 6 : 4, max(120, height))
     }
 
     func place(width: CGFloat, spans: [TileSize]) -> Placement {
-        let cols = columns(for: width)
-        let cell = (width - CGFloat(cols - 1) * spacing) / CGFloat(cols)
-        let rowHeight = min(max(cell * 0.92, 150), 230)
+        let cols = max(1, columns)
+        let cell = max(1, (width - CGFloat(cols - 1) * spacing) / CGFloat(cols))
         var occupied: [[Bool]] = []
         var frames: [CGRect] = []
 

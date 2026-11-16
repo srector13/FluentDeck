@@ -23,12 +23,11 @@ struct FluentDeckApp: App {
 
 struct RootView: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let theme = app.theme(system: colorScheme)
+        let theme = app.theme
         ZStack {
-            MicaBackground()
+            Color.black.ignoresSafeArea() // true black: the iPad's bezel disappears
 
             if app.showsDashboard {
                 DashboardView()
@@ -58,7 +57,7 @@ struct RootView: View {
         }
         .coordinateSpace(name: Fluent.rootSpace)
         .environment(\.fluent, theme)
-        .preferredColorScheme(theme.isDark ? .dark : .light)
+        .preferredColorScheme(.dark)
         .tint(theme.accent)
         .statusBarHidden(app.showsDashboard)
         .persistentSystemOverlays(app.showsDashboard ? .hidden : .automatic)

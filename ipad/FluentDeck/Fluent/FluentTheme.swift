@@ -1,14 +1,16 @@
 import SwiftUI
 
-// Windows 11 (Fluent 2 / WinUI 3) design tokens, translated for touch.
-// Colors are the WinUI theme resources (e.g. TextFillColorSecondary = #C5FFFFFF in dark);
-// sizes follow WinUI but are scaled up ~1.15× and given 44 pt touch targets.
+// "Onyx": Windows 11's dark quick settings flyout, on a true black ground.
+// Colors are the WinUI dark theme resources (e.g. TextFillColorSecondary = #C5FFFFFF), with
+// solid flyout panels instead of Mica; sizes follow WinUI but are scaled up for touch.
 
 enum Fluent {
     static let controlRadius: CGFloat = 6      // WinUI ControlCornerRadius 4, scaled for touch
-    static let overlayRadius: CGFloat = 8      // OverlayCornerRadius: cards, flyouts, dialogs
-    static let cardPadding: CGFloat = 14
-    static let gutter: CGFloat = 12
+    static let overlayRadius: CGFloat = 8      // OverlayCornerRadius: flyouts, dialogs
+    static let tileRadius: CGFloat = 8         // quick settings toggle tiles (deck keys)
+    static let panelRadius: CGFloat = 12       // widget panels and the command bar
+    static let cardPadding: CGFloat = 18
+    static let gutter: CGFloat = 16
     static let touchTarget: CGFloat = 44
     static let rootSpace = "fluent.root"       // coordinate space flyouts anchor in
 }
@@ -86,13 +88,13 @@ struct FluentTheme: Equatable {
     var controlStrokeTop: Color { pick(Self.white(0.093), Self.black(0.059)) }
     var controlStrokeBottom: Color { pick(Self.white(0.07), Self.black(0.16)) }
     var controlStrongStroke: Color { pick(Self.white(0.545), Self.black(0.447)) }
-    var cardStroke: Color { pick(Self.white(0.07), Self.black(0.059)) }
+    var cardStroke: Color { pick(Self.white(0.08), Self.black(0.059)) }
     var surfaceStroke: Color { pick(Self.black(0.2), Self.black(0.059)) }
     var divider: Color { pick(Self.white(0.084), Self.black(0.08)) }
 
     // Surfaces
-    var micaBase: Color { pick(Color(hex: "#202020"), Color(hex: "#F3F3F3")) }
-    var cardFill: Color { pick(Self.white(0.051), Self.white(0.70)) }
+    var cardFill: Color { pick(Color(hex: "#202020"), Self.white(0.70)) }      // the quick settings flyout
+    var barFill: Color { pick(Color(hex: "#1A1A1A"), Color(hex: "#EEEEEE")) }  // its footer strip
     var cardFillSecondary: Color { pick(Self.white(0.03), Color(white: 0.965, opacity: 0.5)) }
     var layerFill: Color { pick(Color(white: 0.227, opacity: 0.30), Self.white(0.5)) }
     var flyoutTint: Color { pick(Color(hex: "#2C2C2C").opacity(0.96), Color(hex: "#FCFCFC").opacity(0.96)) }

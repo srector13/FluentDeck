@@ -1,57 +1,48 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The widget board: title bar, board tabs, and the tile grid.
+/// The widget board: board tabs on top, the grid of panels, and the command bar underneath.
 struct DashboardView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.fluent) private var theme
 
     var body: some View {
         let layout = app.layout
-        VStack(spacing: 0) {
-            TitleBar()
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-
-            HStack(spacing: 4) {
-                SelectorBar(
-                    items: layout.boards.map { SelectorBar<UUID>.Item(id: $0.id, title: $0.name) },
-                    selection: Binding(get: { layout.selectedBoardID }, set: { layout.selectedBoardID = $0 }),
-                    onLongPress: { id, frame in boardMenu(id, frame) })
-                FluentIconButton(symbol: "plus", size: 14, tint: theme.textSecondary, label: "New board") {
-                    withAnimation(.snappy) { layout.addBoard() }
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 12)
+        VStack(spacing: 12) {
+            BoardBar()
 
             if case .reconnecting = app.connection.phase {
                 InfoBar(severity: .warning, title: "Reconnecting to \(app.connection.hostName)…", busy: true)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
 
-            ScrollView {
-                if let board = layout.selectedBoard {
-                    if board.tiles.isEmpty {
-                        EmptyBoard { app.showWidgetPicker() }
-                            .padding(.top, 80)
-                    } else {
-                        DashboardGrid {
-                            ForEach(board.tiles) { tile in
-                                tileView(tile)
-                                    .tileSize(tile.size)
+            GeometryReader { geo in
+                let fit = DashboardGrid.fit(geo.size)
+                ScrollView {
+                    if let board = layout.selectedBoard {
+                        if board.tiles.isEmpty {
+                            EmptyBoard { app.showWidgetPicker() }
+                                .padding(.top, 80)
+                        } else {
+                            DashboardGrid(columns: fit.columns, rowHeight: fit.rowHeight) {
+                                ForEach(board.tiles) { tile in
+                                    tileView(tile)
+                                        .tileSize(tile.size)
+                                }
                             }
+                            .animation(.snappy(duration: 0.3), value: board.tiles)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .animation(.snappy(duration: 0.3), value: board.tiles)
                     }
                 }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollIndicators(.hidden)
+
+            CommandBar()
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
         .animation(.snappy, value: app.connection.phase)
     }
 
@@ -89,18 +80,6 @@ struct DashboardView: View {
                 .onLongPressGesture { app.layout.remove(tile.id) }
         }
     }
-
-    private func boardMenu(_ id: UUID, _ frame: CGRect) {
-        let layout = app.layout
-        guard let board = layout.boards.first(where: { $0.id == id }) else { return }
-        app.overlays.showFlyout(anchor: frame, items: [
-            .action("Rename…", symbol: "pencil") { app.promptRename(board) },
-            .action("Move left", symbol: "arrow.left") { withAnimation(.snappy) { layout.moveBoard(id, by: -1) } },
-            .action("Move right", symbol: "arrow.right") { withAnimation(.snappy) { layout.moveBoard(id, by: 1) } },
-            .separator,
-            .action("Delete board", symbol: "trash", destructive: true) { withAnimation(.snappy) { layout.deleteBoard(id) } },
-        ], width: 220)
-    }
 }
 
 private struct EmptyBoard: View {
@@ -120,47 +99,123 @@ private struct EmptyBoard: View {
     }
 }
 
-/// App title bar: identity, connection state, and the board actions.
-struct TitleBar: View {
+/// Board tabs (like Stream Deck profiles) and the PC this iPad is controlling.
+private struct BoardBar: View {
     @Environment(AppModel.self) private var app
     @Environment(\.fluent) private var theme
 
     var body: some View {
-        HStack(spacing: 10) {
-            AppGlyph(size: 22)
-            Text("FluentDeck").font(FluentFont.caption.weight(.semibold)).foregroundStyle(theme.textPrimary)
-            Text(app.connection.hostName).font(FluentFont.caption).foregroundStyle(theme.textSecondary).lineLimit(1)
+        let layout = app.layout
+        HStack(spacing: 4) {
+            SelectorBar(
+                items: layout.boards.map { SelectorBar<UUID>.Item(id: $0.id, title: $0.name) },
+                selection: Binding(get: { layout.selectedBoardID }, set: { layout.selectedBoardID = $0 }),
+                onLongPress: { id, frame in boardMenu(id, frame) })
+                .padding(.leading, -12)
+            FluentIconButton(symbol: "plus", size: 14, tint: theme.textSecondary, label: "New board") {
+                withAnimation(.snappy) { layout.addBoard() }
+            }
+            Spacer(minLength: 8)
+            Text(app.connection.hostName).font(FluentFont.body).foregroundStyle(theme.textPrimary).lineLimit(1)
             InfoBadge(color: app.connection.isConnected ? theme.success : theme.caution)
-            Spacer()
+                .padding(.leading, 4)
+        }
+        .frame(height: 44)
+    }
+
+    private func boardMenu(_ id: UUID, _ frame: CGRect) {
+        let layout = app.layout
+        guard let board = layout.boards.first(where: { $0.id == id }) else { return }
+        app.overlays.showFlyout(anchor: frame, items: [
+            .action("Rename…", symbol: "pencil") { app.promptRename(board) },
+            .action("Move left", symbol: "arrow.left") { withAnimation(.snappy) { layout.moveBoard(id, by: -1) } },
+            .action("Move right", symbol: "arrow.right") { withAnimation(.snappy) { layout.moveBoard(id, by: 1) } },
+            .separator,
+            .action("Delete board", symbol: "trash", destructive: true) { withAnimation(.snappy) { layout.deleteBoard(id) } },
+        ], width: 220)
+    }
+}
+
+/// The quick settings footer: the PC's battery and load on the left, board actions on the right.
+private struct CommandBar: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.fluent) private var theme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Fluent.panelRadius, style: .continuous)
+        HStack(spacing: 0) {
+            SystemStatus()
+            Spacer(minLength: 8)
             if app.editing {
                 Button { withAnimation(.snappy) { app.editing = false } } label: { Text("Done") }
                     .buttonStyle(FluentButtonStyle(kind: .accent, compact: true))
+                    .padding(.trailing, 8)
             } else {
-                Button { app.showWidgetPicker() } label: { Label("Add widgets", systemImage: "plus") }
-                    .buttonStyle(FluentButtonStyle(kind: .subtle, compact: true))
-                Button { withAnimation(.snappy) { app.editing = true } } label: { Label("Customize", systemImage: "square.and.pencil") }
-                    .buttonStyle(FluentButtonStyle(kind: .subtle, compact: true))
+                FluentIconButton(symbol: "plus", label: "Add widgets") { app.showWidgetPicker() }
+                FluentIconButton(symbol: "pencil", label: "Customize") { withAnimation(.snappy) { app.editing = true } }
             }
             FlyoutButton(width: 280, items: settingsItems) {
-                Image(systemName: "gearshape").font(.system(size: 16)).frame(width: 30, height: 30)
+                Image(systemName: "gearshape").font(.system(size: 17)).frame(width: 40, height: 40)
             }
             .accessibilityLabel("Settings")
         }
-        .frame(height: 48)
+        .padding(.leading, 20)
+        .padding(.trailing, 8)
+        .frame(height: 56)
+        .background(shape.fill(theme.barFill))
+        .overlay(shape.strokeBorder(theme.cardStroke, lineWidth: 1))
     }
 
     private func settingsItems() -> [FlyoutItem] {
         [
-            .header("Theme"),
-            .action("Match my PC", checked: app.themeMode == .followPC) { app.themeMode = .followPC },
-            .action("Light", checked: app.themeMode == .light) { app.themeMode = .light },
-            .action("Dark", checked: app.themeMode == .dark) { app.themeMode = .dark },
-            .separator,
             .action("Keep screen awake", checked: app.keepAwake) { app.keepAwake.toggle() },
             .separator,
             .action("Switch PC…", symbol: "arrow.left.arrow.right") { app.switchHost() },
             .action("Forget \(app.connection.hostName)", symbol: "xmark.circle", destructive: true) { app.forgetCurrentHost() },
         ]
+    }
+}
+
+/// Battery, CPU and memory of the PC, when it reports them.
+private struct SystemStatus: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.fluent) private var theme
+
+    var body: some View {
+        if let s = app.connection.store.box("system").decoded(SystemState.self) {
+            HStack(spacing: 22) {
+                if let b = s.battery {
+                    HStack(spacing: 7) {
+                        Image(systemName: Self.batterySymbol(b)).font(.system(size: 17))
+                        Text("\(b.percent)%")
+                    }
+                    .foregroundStyle(b.percent <= 15 && !b.charging ? theme.critical : theme.textPrimary)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(b.charging ? "Battery \(b.percent) percent, charging" : "Battery \(b.percent) percent")
+                }
+                stat("CPU", "\(Int(s.cpu.rounded()))%")
+                stat("Memory", String(format: "%.1f of %.0f GB", s.memoryUsedGb, s.memoryTotalGb))
+            }
+            .font(FluentFont.caption)
+            .monospacedDigit()
+            .lineLimit(1)
+        }
+    }
+
+    private func stat(_ title: String, _ value: String) -> some View {
+        HStack(spacing: 6) {
+            Text(title).foregroundStyle(theme.textSecondary)
+            Text(value).foregroundStyle(theme.textPrimary)
+        }
+    }
+
+    static func batterySymbol(_ b: BatteryState) -> String {
+        if b.charging { return "battery.100percent.bolt" }
+        if b.percent < 13 { return "battery.0percent" }
+        if b.percent < 38 { return "battery.25percent" }
+        if b.percent < 63 { return "battery.50percent" }
+        if b.percent < 88 { return "battery.75percent" }
+        return "battery.100percent"
     }
 }
 

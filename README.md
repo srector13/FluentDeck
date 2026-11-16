@@ -2,7 +2,7 @@
 
 **FluentDeck is a touch controller for your Windows PC that runs on your iPad.** Think of it as Windows 11 crossed with a Stream Deck.
 
-- **On the iPad:** a native SwiftUI app that follows Windows 11's Fluent design. It uses Mica surfaces, widget cards, SelectorBar tabs, MenuFlyouts, ContentDialogs, InfoBars, and WinUI-style sliders and toggles, all sized for touch. Its accent color and light/dark mode **follow your PC's live**.
+- **On the iPad:** a native SwiftUI app styled after Windows 11's dark quick settings flyout, on a true black ground so the iPad's bezel disappears. Deck keys are quick settings toggle tiles, volume uses WinUI sliders, and a footer bar carries the PC's battery and load. Everything is sized for touch, and the accent color **follows your PC's live**.
 - **On the PC:** a small tray app (native on Arm64, so it runs natively on your Snapdragon). It exposes media, audio, system stats and a configurable button deck over your LAN.
 
 ```
@@ -19,13 +19,13 @@
 
 | Widget | Sizes | What it does |
 |---|---|---|
-| **Now Playing** | M / L / Wide | Album art, title and artist, a scrubber, shuffle/repeat, and a picker when several apps are playing. It reads Windows' media transport controls (the same source as the Quick Settings media flyout), so it works with Spotify, Apple Music, browsers, VLC and others without per-app code. |
-| **Volume Mixer** | S / M / L / Wide | Master volume, the mic, and a slider for each app with its real Windows icon. Includes an output-device switcher. |
-| **Deck** | S / M / L / Wide | Stream Deck–style keys defined in `deck.json`. They can launch apps and URIs, send hotkeys, type text, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). |
+| **Now Playing** | M / L / Tall / Wide | Album art, title and artist, a scrubber, shuffle/repeat, and a picker when several apps are playing. It reads Windows' media transport controls (the same source as the Quick Settings media flyout), so it works with Spotify, Apple Music, browsers, VLC and others without per-app code. |
+| **Volume Mixer** | S / M / L / Banner / Wide | Master volume, the mic, and a slider for each app with its real Windows icon. Includes an output-device switcher. |
+| **Deck** | S / M / L / Wide / XL | Stream Deck–style keys defined in `deck.json`. They can launch apps and URIs, send hotkeys, type text, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). |
 | **System** | S / M / L | CPU ring, memory, battery and uptime, plus Lock / Sleep / Screen off. |
-| **Clock** | S / M / L | Runs on the iPad only. It's also the smallest example panel. |
+| **Clock** | S / M / L | Large, light numerals set straight on the board, with no panel behind them. Runs on the iPad only. It's also the smallest example panel. |
 
-You can set up any number of **boards** (tabs, like Stream Deck profiles). On each widget, the **⋯** menu offers size, widget-specific options (e.g. which deck page to show) and *Unpin*. **Customize** lets you drag widgets to reorder them, and **Add widgets** opens a Windows-style picker with a live preview.
+You can set up any number of **boards** (tabs, like Stream Deck profiles). A board fills the screen like a hardware deck: 6 × 4 cells in landscape, 4 × 7 in portrait, and it scrolls only if you pin more than that. The footer bar holds **Add widgets** (+), **Customize** (pencil) and settings (gear). While customizing, each widget shows a **⋯** button for its size, widget-specific options (e.g. which deck page to show) and *Unpin*, and you can drag widgets to reorder them.
 
 ## Quick start
 
@@ -81,7 +81,6 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 | `-FluentDeckReset YES` | start with no saved PCs, tokens, layout or preferences |
 | `-FluentDeckConnect host[:port]` | connect to this PC at launch |
 | `-FluentDeckPairCode 123456` | answer the pairing prompt with this code |
-| `-FluentDeckTheme light\|dark` | force light or dark |
 | `-FluentDeckBoard N` | open board N (0-based) |
 
 ## Editing the deck
@@ -163,14 +162,14 @@ struct AgentsPanel: View {
 
 If a PC doesn't provide a topic yet, the picker shows that widget as unavailable, so older hosts degrade gracefully.
 
-Reusable Fluent components live in `ipad/FluentDeck/Fluent/`: `FluentButtonStyle`, `FluentIconButton`, `FluentSlider` / `RemoteSlider` (optimistic and throttled), `FluentToggleStyle`, `FluentProgressBar`, `FluentProgressRing`, `FluentRingGauge`, `InfoBar`, `InfoBadge`, `FluentTextBox`, `SelectorBar`, `FlyoutButton` and `MenuFlyoutView`, `ContentDialog` and `DialogButton`, `SettingsCard`, `MicaBackground`, and the `FluentTheme` tokens.
+Reusable Fluent components live in `ipad/FluentDeck/Fluent/`: `FluentButtonStyle`, `FluentIconButton`, `FluentSlider` / `RemoteSlider` (optimistic and throttled), `FluentToggleStyle`, `FluentProgressBar`, `FluentProgressRing`, `FluentRingGauge`, `InfoBar`, `InfoBadge`, `FluentTextBox`, `SelectorBar`, `FlyoutButton` and `MenuFlyoutView`, `ContentDialog` and `DialogButton`, `SettingsCard`, and the `FluentTheme` tokens.
 
 ## Design notes
 
-- **Tokens** are WinUI 3's theme resources (for example `TextFillColorSecondary` and `ControlFillColorDefault`), in both dark and light. They're mapped in `FluentTheme.swift`, and the accent ramp comes from the PC's `UISettings`.
+- **Look:** dark only. The ground is true black; widget panels are the quick settings flyout surface (`#202020`, hairline border). Tokens are WinUI 3's dark theme resources (for example `TextFillColorSecondary` and `ControlFillColorDefault`), mapped in `FluentTheme.swift`, and the accent ramp comes from the PC's `UISettings`.
 - **Sizing for touch:** the type ramp is scaled about 1.15×, every control is at least 44 pt, slider thumbs grow while you hold them, and deck keys respond to presses with scale and haptics.
 - **Fonts and icons:** Segoe UI Variable and Segoe Fluent Icons aren't licensed for iOS, so the app uses SF Pro on the same type ramp and SF Symbols at regular weight. These read very close to Fluent. Icons go through plain symbol-name strings, so swapping in Microsoft's MIT-licensed Fluent UI System Icons later is a contained change.
-- **Grid:** `DashboardGrid` is a custom `Layout` that packs 1×1 to 4×2 tiles first-fit. On an 11" iPad that's 6 columns in landscape and 4 in portrait.
+- **Grid:** `DashboardGrid` is a custom `Layout` that packs 1×1 to 4×3 tiles first-fit. `DashboardGrid.fit` sizes the cells so 6 × 4 of them (4 × 7 in portrait) fill the screen exactly.
 
 ## Security model
 
@@ -182,6 +181,6 @@ Reusable Fluent components live in `ipad/FluentDeck/Fluent/`: `FluentButtonStyle
 
 - **Host core and DevHost:** built and tested end to end with `tools/smoke_test.py`. That covers pairing, auth rejection, snapshots, invokes, errors, coalescing, asset auth, deck hot-reload and broken-JSON recovery, and reconnecting with a token.
 - **Windows host:** written against the real APIs (WinRT SMTC/UISettings, NAudio 2.2.1 Core Audio, Win32 SendInput/DNS-SD) and compile-checked against those signatures. It hasn't run on a PC yet, so do the first run with `--console` and check `host.log`.
-- **iPad app:** syntax-checked, and its models were checked field by field against live host JSON. It hasn't been compiled in Xcode yet, so expect a quick fix-up pass on the first build.
+- **iPad app:** built by CI on every push and driven through its screens on an iPad simulator against the DevHost (`FluentDeckUITests`). It hasn't run on a physical iPad yet, so Bonjour discovery and the Local Network prompt are unverified.
 
 Known limits: Windows won't let a non-elevated app send keystrokes to an elevated (admin) window. Switching the default audio device uses the undocumented `IPolicyConfig` interface, the same one EarTrumpet and SoundSwitch use.

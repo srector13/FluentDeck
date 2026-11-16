@@ -8,14 +8,12 @@ import Foundation
 /// | `-FluentDeckReset YES` | start with no saved PCs, tokens, layout or preferences |
 /// | `-FluentDeckConnect host[:port]` | connect to this PC at launch (e.g. the DevHost on 127.0.0.1) |
 /// | `-FluentDeckPairCode 123456` | answer the pairing prompt with this code |
-/// | `-FluentDeckTheme light\|dark` | force light or dark instead of following the PC |
 /// | `-FluentDeckBoard N` | open board N (0-based) |
 enum LaunchOptions {
     private static var args: UserDefaults { .standard }
 
     static var reset: Bool { args.bool(forKey: "FluentDeckReset") }
     static var pairCode: String? { args.string(forKey: "FluentDeckPairCode").flatMap { $0.isEmpty ? nil : $0 } }
-    static var theme: String? { args.string(forKey: "FluentDeckTheme") }
     static var board: Int? { args.object(forKey: "FluentDeckBoard") == nil ? nil : args.integer(forKey: "FluentDeckBoard") }
 
     static var connect: HostEndpoint? {
@@ -37,7 +35,7 @@ enum LaunchOptions {
            let hosts = try? JSONDecoder().decode([HostEndpoint].self, from: saved) {
             hosts.compactMap(\.hostId).forEach(Keychain.deleteToken(for:))
         }
-        for key in ["fluentdeck.hosts", "fluentdeck.layout.v1", "fluentdeck.themeMode", "fluentdeck.keepAwake"] {
+        for key in ["fluentdeck.hosts", LayoutStore.storageKey, "fluentdeck.keepAwake"] {
             defaults.removeObject(forKey: key)
         }
     }

@@ -10,8 +10,8 @@ struct DeckPanel: View {
         summary: "A grid of buttons from deck.json on your PC — launch apps, send hotkeys, run macros. Edit the file and the buttons update live.",
         symbol: "square.grid.3x3",
         requires: "deck",
-        sizes: [.small, .medium, .large, .wide],
-        defaultSize: .wide,
+        sizes: [.small, .medium, .large, .wide, .huge],
+        defaultSize: .huge,
         defaultConfig: ["page": "main"],
         menu: { ctx in
             guard let deck = ctx.state("deck", as: DeckState.self), !deck.pages.isEmpty else { return [] }
@@ -46,38 +46,87 @@ struct DeckPanel: View {
     }
 }
 
+/// Sizes the keys so a page fills its panel: the column count that gives the largest tiles
+/// without scrolling, unless deck.json fixes `columns`.
+private enum DeckLayout {
+    static let gap: CGFloat = 16
+    static let rowGap: CGFloat = 14
+    static let labelGap: CGFloat = 8
+    static let labelHeight: CGFloat = 18
+    /// Height of a quick settings tile relative to its width.
+    static let aspect: CGFloat = 0.87
+
+    struct Fit {
+        var columns: Int
+        var tile: CGSize
+        var scrolls: Bool
+    }
+
+    static func fit(count: Int, in size: CGSize, fixedColumns: Int?) -> Fit {
+        let n = max(count, 1)
+
+        func width(_ columns: Int) -> CGFloat {
+            max(1, (size.width - CGFloat(columns - 1) * gap) / CGFloat(columns))
+        }
+        func tile(_ columns: Int) -> CGSize {
+            let w = width(columns)
+            let rows = (n + columns - 1) / columns
+            let cell = (size.height - CGFloat(rows - 1) * rowGap) / CGFloat(rows)
+            return CGSize(width: w, height: min(cell - labelGap - labelHeight, w * aspect))
+        }
+        func scrolling(_ columns: Int) -> Fit {
+            let w = width(columns)
+            return Fit(columns: columns, tile: CGSize(width: w, height: max(44, w * aspect)), scrolls: true)
+        }
+
+        if let fixed = fixedColumns, fixed > 0 {
+            let t = tile(fixed)
+            return t.height >= 44 ? Fit(columns: fixed, tile: t, scrolls: false) : scrolling(fixed)
+        }
+
+        var best: Fit?
+        var bestScore: CGFloat = 0
+        for columns in 1...min(n, 12) {
+            let t = tile(columns)
+            guard t.width >= 56, t.height >= 44 else { continue }
+            let score = min(t.width, t.height / aspect)
+            if score > bestScore {
+                bestScore = score
+                best = Fit(columns: columns, tile: t, scrolls: false)
+            }
+        }
+        return best ?? scrolling(max(1, Int((size.width + gap) / (84 + gap))))
+    }
+}
+
 private struct DeckGrid: View {
     let ctx: PanelContext
     let page: DeckPageModel
 
-    private let gap: CGFloat = 10
-    private let minKey: CGFloat = 78
-    private let maxKey: CGFloat = 116
-
     var body: some View {
         GeometryReader { g in
-            let columns = page.columns ?? max(1, Int((g.size.width + gap) / (minKey + gap)))
-            let side = min(maxKey, (g.size.width - CGFloat(columns - 1) * gap) / CGFloat(columns))
-            let rowsFit = max(1, Int((g.size.height + gap) / (side + gap)))
-            let needsScroll = (page.buttons.count + columns - 1) / columns > rowsFit
+            let fit = DeckLayout.fit(count: page.buttons.count, in: g.size, fixedColumns: page.columns)
             ScrollView(.vertical) {
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(side), spacing: gap), count: columns), spacing: gap) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(fit.tile.width), spacing: DeckLayout.gap), count: fit.columns),
+                          spacing: DeckLayout.rowGap) {
                     ForEach(page.buttons) { button in
-                        DeckKey(ctx: ctx, button: button, side: side)
+                        DeckKey(ctx: ctx, button: button, tile: fit.tile)
                     }
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .scrollDisabled(!needsScroll)
+            .scrollDisabled(!fit.scrolls)
             .scrollIndicators(.hidden)
         }
     }
 }
 
+/// A deck key drawn as a quick settings toggle: a tile with its label underneath, filled with
+/// the accent while it is on.
 private struct DeckKey: View {
     let ctx: PanelContext
     let button: DeckButtonModel
-    let side: CGFloat
+    let tile: CGSize
 
     @Environment(\.fluent) private var theme
     @State private var running = false
@@ -94,31 +143,40 @@ private struct DeckKey: View {
     var body: some View {
         let on = isOn
         let lit = on || button.style == "accent"
+        let shape = RoundedRectangle(cornerRadius: Fluent.tileRadius, style: .continuous)
+        let glyph = min(max(tile.height * 0.3, 18), 44)
         Button(action: press) {
-            VStack(spacing: side * 0.07) {
-                if let icon = button.icon {
-                    RemoteImage(path: icon, contentMode: .fit) {
-                        Image(systemName: button.symbol ?? "app").font(.system(size: side * 0.28))
+            VStack(spacing: DeckLayout.labelGap) {
+                ZStack {
+                    shape.fill(lit ? theme.accent : theme.controlFill)
+                    shape.strokeBorder(failed ? theme.critical : theme.controlStrokeTop, lineWidth: failed ? 2 : 1)
+                    if let icon = button.icon {
+                        RemoteImage(path: icon, contentMode: .fit) {
+                            Image(systemName: button.symbol ?? "app").font(.system(size: glyph))
+                        }
+                        .frame(width: glyph * 1.3, height: glyph * 1.3)
+                    } else {
+                        Image(systemName: (on ? button.symbolOn : nil) ?? button.symbol ?? "square.dashed")
+                            .font(.system(size: glyph, weight: .regular))
+                            .contentTransition(.symbolEffect(.replace))
                     }
-                    .frame(width: side * 0.38, height: side * 0.38)
-                } else {
-                    Image(systemName: (on ? button.symbolOn : nil) ?? button.symbol ?? "square.dashed")
-                        .font(.system(size: side * 0.27, weight: .regular))
-                        .contentTransition(.symbolEffect(.replace))
-                        .frame(height: side * 0.38)
+                }
+                .foregroundStyle(lit ? theme.textOnAccent : theme.textPrimary)
+                .frame(width: tile.width, height: tile.height)
+                .overlay(alignment: .topTrailing) {
+                    if running { FluentProgressRing(size: 12, lineWidth: 2).padding(8) }
                 }
                 Text(button.label)
-                    .font(.system(size: max(11, side * 0.12), weight: .medium))
+                    .font(.system(size: 13))
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .padding(.horizontal, 4)
+                    .minimumScaleFactor(0.75)
+                    .frame(width: tile.width, height: DeckLayout.labelHeight)
             }
-            .frame(width: side, height: side)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(DeckKeyStyle(lit: lit, failed: failed))
-        .overlay(alignment: .topTrailing) {
-            if running { FluentProgressRing(size: 12, lineWidth: 2).padding(7) }
-        }
+        .buttonStyle(DeckKeyStyle())
+        .animation(.easeOut(duration: 0.2), value: lit)
         .sensoryFeedback(.impact(weight: .light), trigger: presses)
         .accessibilityLabel(button.label)
     }
@@ -140,36 +198,12 @@ private struct DeckKey: View {
     }
 }
 
-/// A Stream Deck key drawn with Fluent materials: card fill + elevation border, accent when lit.
+/// Press feedback for a key: it dips and dims under the finger.
 private struct DeckKeyStyle: ButtonStyle {
-    let lit: Bool
-    let failed: Bool
-
     func makeBody(configuration: Configuration) -> some View {
-        KeyBody(configuration: configuration, lit: lit, failed: failed)
-    }
-
-    struct KeyBody: View {
-        let configuration: ButtonStyleConfiguration
-        let lit: Bool
-        let failed: Bool
-        @Environment(\.fluent) private var theme
-
-        var body: some View {
-            let pressed = configuration.isPressed
-            let shape = RoundedRectangle(cornerRadius: Fluent.overlayRadius + 2, style: .continuous)
-            configuration.label
-                .foregroundStyle(lit ? theme.textOnAccent : theme.textPrimary)
-                .background(shape.fill(lit ? (pressed ? theme.accentTertiary : theme.accent)
-                                           : (pressed ? theme.controlFillTertiary : theme.controlFillSecondary)))
-                .overlay(shape.strokeBorder(
-                    failed ? AnyShapeStyle(theme.critical)
-                           : AnyShapeStyle(LinearGradient(colors: [theme.controlStrokeTop, theme.controlStrokeBottom], startPoint: .top, endPoint: .bottom)),
-                    lineWidth: failed ? 2 : 1))
-                .shadow(color: .black.opacity(pressed ? 0 : (theme.isDark ? 0.25 : 0.08)), radius: pressed ? 0 : 3, y: pressed ? 0 : 2)
-                .scaleEffect(pressed ? 0.95 : 1)
-                .animation(.snappy(duration: 0.12), value: pressed)
-                .animation(.easeOut(duration: 0.2), value: lit)
-        }
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(.snappy(duration: 0.12), value: configuration.isPressed)
     }
 }

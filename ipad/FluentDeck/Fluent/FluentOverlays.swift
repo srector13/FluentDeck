@@ -296,21 +296,3 @@ struct SelectorBar<ID: Hashable>: View {
         }
     }
 }
-
-// MARK: - Mica
-
-/// Approximates Windows 11 Mica: the base surface tinted very softly by the accent.
-struct MicaBackground: View {
-    @Environment(\.fluent) private var theme
-
-    var body: some View {
-        ZStack {
-            theme.micaBase
-            RadialGradient(colors: [theme.palette.base.opacity(theme.isDark ? 0.16 : 0.09), .clear],
-                           center: .topLeading, startRadius: 0, endRadius: 900)
-            RadialGradient(colors: [theme.palette.dark2.opacity(theme.isDark ? 0.20 : 0.05), .clear],
-                           center: .bottomTrailing, startRadius: 0, endRadius: 1000)
-        }
-        .ignoresSafeArea()
-    }
-}

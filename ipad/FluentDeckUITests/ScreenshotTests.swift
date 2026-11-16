@@ -19,45 +19,53 @@ final class ScreenshotTests: XCTestCase {
         let app = XCUIApplication()
 
         // 1. First launch: no PC yet.
-        launch(app, ["-FluentDeckReset", "YES", "-FluentDeckTheme", "light"], orientation: .landscapeLeft)
+        launch(app, ["-FluentDeckReset", "YES"], orientation: .landscapeLeft)
         XCTAssertTrue(app.staticTexts["Connect to your PC"].waitForExistence(timeout: 30))
-        shot("01-connect-light")
+        shot("01-connect")
 
         // 2. The PC asks for its code.
-        launch(app, ["-FluentDeckReset", "YES", "-FluentDeckTheme", "dark", "-FluentDeckConnect", host], orientation: .landscapeLeft)
+        launch(app, ["-FluentDeckReset", "YES", "-FluentDeckConnect", host], orientation: .landscapeLeft)
         let pairTitle = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Pair with'")).firstMatch
         XCTAssertTrue(pairTitle.waitForExistence(timeout: 30))
-        shot("02-pairing-dark")
+        shot("02-pairing")
 
         // 3. Pair, land on the Home board.
-        launch(app, ["-FluentDeckReset", "YES", "-FluentDeckTheme", "dark", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .landscapeLeft)
+        launch(app, connected(board: 0, reset: true), orientation: .landscapeLeft)
         waitForDashboard(app)
-        shot("03-home-dark-landscape")
+        shot("03-home-landscape")
 
-        // 4. Same board in light mode.
-        launch(app, ["-FluentDeckTheme", "light", "-FluentDeckBoard", "0", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .landscapeLeft)
+        // 4. The Dev board.
+        launch(app, connected(board: 1), orientation: .landscapeLeft)
         waitForDashboard(app)
-        shot("04-home-light-landscape")
+        shot("04-dev-board")
 
-        // 5. The Dev board.
-        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "1", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .landscapeLeft)
+        // 5. Customizing: every panel shows its outline and options button.
+        launch(app, connected(board: 0), orientation: .landscapeLeft)
         waitForDashboard(app)
-        shot("05-dev-board-dark")
+        app.buttons["Customize"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 10))
+        sleep(1)
+        shot("05-customize")
 
         // 6. Add widgets picker.
-        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "0", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .landscapeLeft)
+        launch(app, connected(board: 0), orientation: .landscapeLeft)
         waitForDashboard(app)
         app.buttons["Add widgets"].firstMatch.tap()
         sleep(2)
-        shot("06-widget-picker-dark")
+        shot("06-widget-picker")
 
         // 7. Portrait.
-        launch(app, ["-FluentDeckTheme", "dark", "-FluentDeckBoard", "0", "-FluentDeckConnect", host, "-FluentDeckPairCode", code], orientation: .portrait)
+        launch(app, connected(board: 0), orientation: .portrait)
         waitForDashboard(app)
-        shot("07-home-dark-portrait")
+        shot("07-home-portrait")
     }
 
     // MARK: helpers
+
+    private func connected(board: Int, reset: Bool = false) -> [String] {
+        (reset ? ["-FluentDeckReset", "YES"] : [])
+            + ["-FluentDeckBoard", String(board), "-FluentDeckConnect", host, "-FluentDeckPairCode", code]
+    }
 
     @MainActor
     private func launch(_ app: XCUIApplication, _ arguments: [String], orientation: UIDeviceOrientation) {

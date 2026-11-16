@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The chrome around every widget: Windows 11 widget header (icon + title + ⋯ menu) on a card.
+/// The panel around every widget: a quick settings flyout surface with a hairline border.
+/// There is no header. While customizing, each panel shows a dashed outline and an options button.
 struct WidgetCard: View {
     let tile: TileInstance
     let spec: PanelSpec
@@ -18,61 +19,53 @@ struct WidgetCard: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Fluent.overlayRadius, style: .circular)
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: spec.symbol)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(theme.accent)
-                Text(spec.title)
-                    .font(FluentFont.caption)
-                    .foregroundStyle(theme.textSecondary)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                if !preview {
-                    FlyoutButton(width: 240, items: menuItems) {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(theme.textSecondary)
-                            .frame(width: 30, height: 24)
-                    }
-                    .padding(.trailing, -6)
-                    .accessibilityLabel("More options for \(spec.title)")
-                }
+        let shape = RoundedRectangle(cornerRadius: Fluent.panelRadius, style: .continuous)
+        let bare = spec.chromeless && !preview
+        Group {
+            if available {
+                spec.view(ctx)
+            } else {
+                PanelEmptyState(symbol: "exclamationmark.triangle", text: "This PC doesn’t provide “\(spec.requires ?? "")”")
             }
-            .frame(height: 24)
-
-            Group {
-                if available {
-                    spec.view(ctx)
-                } else {
-                    PanelEmptyState(symbol: "exclamationmark.triangle", text: "This PC doesn’t provide “\(spec.requires ?? "")”")
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .allowsHitTesting(!editing)
         }
-        .padding(Fluent.cardPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(!editing)
+        .padding(bare ? 6 : Fluent.cardPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
-            ZStack {
-                shape.fill(theme.cardFill)
-                if let background = spec.background, available { background(ctx).clipShape(shape) }
+            if !bare {
+                ZStack {
+                    shape.fill(theme.cardFill)
+                    if let background = spec.background, available { background(ctx).clipShape(shape) }
+                }
             }
         }
         .overlay {
             if editing {
                 shape.strokeBorder(theme.accent, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
-            } else {
+            } else if !bare {
                 shape.strokeBorder(theme.cardStroke, lineWidth: 1)
             }
         }
         .clipShape(shape)
         .contentShape(shape)
+        .overlay(alignment: .topTrailing) {
+            if editing {
+                FlyoutButton(width: 240, items: menuItems) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(theme.textPrimary)
+                        .frame(width: 28, height: 28)
+                }
+                .background(Circle().fill(theme.controlSolidFill))
+                .padding(8)
+                .accessibilityLabel("Options for \(spec.title)")
+            }
+        }
     }
 
     private func menuItems() -> [FlyoutItem] {
-        var items: [FlyoutItem] = []
+        var items: [FlyoutItem] = [.header(spec.title)]
         if spec.sizes.count > 1 {
             items += spec.sizes.map { size in
                 FlyoutItem.action(size.title, checked: size == tile.size) { onResize(size) }
@@ -80,10 +73,10 @@ struct WidgetCard: View {
         }
         let extra = spec.menu(ctx)
         if !extra.isEmpty {
-            if !items.isEmpty { items.append(.separator) }
+            items.append(.separator)
             items += extra
         }
-        if !items.isEmpty { items.append(.separator) }
+        items.append(.separator)
         items.append(.action("Unpin widget", symbol: "pin.slash", destructive: true) { onRemove() })
         return items
     }

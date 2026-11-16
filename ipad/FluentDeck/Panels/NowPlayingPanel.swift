@@ -10,9 +10,8 @@ struct NowPlayingPanel: View {
         summary: "Album art, playback controls and a scrubber for whatever is playing on the PC.",
         symbol: "music.note",
         requires: "media",
-        sizes: [.medium, .large, .wide],
-        defaultSize: .large,
-        background: { ctx in AnyView(ArtworkBackdrop(ctx: ctx)) },
+        sizes: [.medium, .large, .tall, .wide],
+        defaultSize: .tall,
         view: { AnyView(NowPlayingPanel(ctx: $0)) })
 
     @Environment(\.fluent) private var theme
@@ -21,6 +20,7 @@ struct NowPlayingPanel: View {
         if let m = ctx.state("media", as: MediaState.self), m.hasSession {
             switch ctx.size {
             case .medium: medium(m)
+            case .tall: tall(m)
             case .wide: wide(m)
             default: large(m)
             }
@@ -45,6 +45,31 @@ struct NowPlayingPanel: View {
             }
             Spacer(minLength: 0)
             Scrubber(ctx: ctx, media: m)
+            TransportRow(ctx: ctx, media: m, prominent: true)
+        }
+    }
+
+    /// The Windows media flyout, stood upright: source, cover, title, scrubber, transport.
+    private func tall(_ m: MediaState) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SourcePicker(ctx: ctx, media: m)
+            Artwork(path: m.artwork)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 6)
+            Text(m.title ?? "Unknown title")
+                .font(FluentFont.subtitle)
+                .foregroundStyle(theme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.top, 14)
+            Text(m.artist ?? "")
+                .font(FluentFont.body)
+                .foregroundStyle(theme.textSecondary)
+                .lineLimit(1)
+                .padding(.top, 2)
+            Scrubber(ctx: ctx, media: m)
+                .padding(.top, 2)
             TransportRow(ctx: ctx, media: m, prominent: true)
         }
     }
@@ -92,21 +117,6 @@ private struct Artwork: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .circular))
         .overlay(RoundedRectangle(cornerRadius: 6, style: .circular).strokeBorder(theme.cardStroke, lineWidth: 1))
-        .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
-    }
-}
-
-/// Blurred art behind the card, like the Windows media widgets.
-private struct ArtworkBackdrop: View {
-    let ctx: PanelContext
-    @Environment(\.fluent) private var theme
-
-    var body: some View {
-        let m = ctx.state("media", as: MediaState.self)
-        RemoteImage(path: m?.hasSession == true ? m?.artwork : nil)
-            .blur(radius: 40)
-            .opacity(theme.isDark ? 0.35 : 0.25)
-            .saturation(1.2)
     }
 }
 

@@ -5,7 +5,7 @@ struct WidgetPicker: View {
     @Environment(AppModel.self) private var app
     @Environment(\.fluent) private var theme
     @State private var selected = "media.nowPlaying"
-    @State private var size: TileSize = .large
+    @State private var size: TileSize = .tall
 
     private var spec: PanelSpec? { PanelCatalog.spec(for: selected) }
 

@@ -6,8 +6,6 @@ import UIKit
 @MainActor
 @Observable
 final class AppModel {
-    enum ThemeMode: String { case followPC, light, dark }
-
     let connection = HostConnection()
     let browser = HostBrowser()
     let layout = LayoutStore()
@@ -17,9 +15,6 @@ final class AppModel {
     /// The user chose "Switch PC…" — show the connect screen even though a PC is configured.
     var choosingHost = false
 
-    var themeMode: ThemeMode {
-        didSet { UserDefaults.standard.set(themeMode.rawValue, forKey: "fluentdeck.themeMode") }
-    }
     var keepAwake: Bool {
         didSet { UserDefaults.standard.set(keepAwake, forKey: "fluentdeck.keepAwake"); updateIdleTimer() }
     }
@@ -29,8 +24,6 @@ final class AppModel {
 
     init() {
         let defaults = UserDefaults.standard
-        themeMode = ThemeMode(rawValue: LaunchOptions.theme ?? "")
-            ?? ThemeMode(rawValue: defaults.string(forKey: "fluentdeck.themeMode") ?? "") ?? .followPC
         keepAwake = defaults.object(forKey: "fluentdeck.keepAwake") as? Bool ?? true
         savedHosts = (defaults.data(forKey: "fluentdeck.hosts")).flatMap { try? JSONDecoder().decode([HostEndpoint].self, from: $0) } ?? []
 
@@ -57,17 +50,10 @@ final class AppModel {
 
     // MARK: theme
 
-    /// Windows' own accent and light/dark mode when connected; the iPad's appearance otherwise.
-    func theme(system: ColorScheme) -> FluentTheme {
+    /// Always dark, on true black. The accent is the PC's own once connected.
+    var theme: FluentTheme {
         let pc = connection.store.box("theme").decoded(ThemeState.self)
-        let palette = pc.map { AccentPalette($0) } ?? .windowsBlue
-        let dark: Bool
-        switch themeMode {
-        case .followPC: dark = pc?.isDark ?? (system == .dark)
-        case .light: dark = false
-        case .dark: dark = true
-        }
-        return FluentTheme(isDark: dark, palette: palette)
+        return FluentTheme(isDark: true, palette: pc.map { AccentPalette($0) } ?? .windowsBlue)
     }
 
     // MARK: hosts

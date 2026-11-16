@@ -9,13 +9,14 @@ import SwiftUI
 //      `ctx.state("topic", as: MyState.self)` and calls `ctx.run("topic", "action")`.
 //   3. Give it a `static let spec = PanelSpec(...)` and add it to `PanelCatalog.all`.
 //
-// Sizing, the ⋯ menu, persistence, boards, drag-to-reorder, theming and the
+// Sizing, the options menu, persistence, boards, drag-to-reorder, theming and the
 // "Add widgets" picker all come for free.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Windows 11 widget sizes, plus a wide size for decks. Spans are in grid cells.
+/// Widget sizes, as spans of grid cells. A landscape board is 6 × 4 cells, so a tall Now Playing,
+/// a huge deck, a medium clock and a banner mixer fill it exactly.
 enum TileSize: String, Codable, CaseIterable, Identifiable {
-    case small, medium, large, wide
+    case small, medium, large, tall, banner, wide, huge
 
     var id: String { rawValue }
 
@@ -24,7 +25,10 @@ enum TileSize: String, Codable, CaseIterable, Identifiable {
         case .small: return (1, 1)
         case .medium: return (2, 1)
         case .large: return (2, 2)
+        case .tall: return (2, 3)
+        case .banner: return (4, 1)
         case .wide: return (4, 2)
+        case .huge: return (4, 3)
         }
     }
 
@@ -33,7 +37,10 @@ enum TileSize: String, Codable, CaseIterable, Identifiable {
         case .small: return "Small"
         case .medium: return "Medium"
         case .large: return "Large"
+        case .tall: return "Tall"
+        case .banner: return "Banner"
         case .wide: return "Wide"
+        case .huge: return "Extra large"
         }
     }
 }
@@ -93,6 +100,8 @@ struct PanelSpec: Identifiable {
     var menu: @MainActor (PanelContext) -> [FlyoutItem] = { _ in [] }
     /// Optional full-bleed background behind the card content (e.g. blurred album art).
     var background: (@MainActor (PanelContext) -> AnyView)? = nil
+    /// Draw the widget straight on the board, with no panel behind it (the clock).
+    var chromeless = false
     let view: @MainActor (PanelContext) -> AnyView
 }
 

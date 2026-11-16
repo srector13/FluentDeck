@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Windows 11 volume mixer: output device, master, mic, and per-app volume with real app icons.
+/// The volume half of quick settings: output device, master, mic, and per-app volume with real app icons.
 struct VolumeMixerPanel: View {
     let ctx: PanelContext
 
@@ -10,8 +10,8 @@ struct VolumeMixerPanel: View {
         summary: "Master and per-app volume, microphone mute, and output device switching.",
         symbol: "speaker.wave.2",
         requires: "audio",
-        sizes: [.small, .medium, .large, .wide],
-        defaultSize: .large,
+        sizes: [.small, .medium, .large, .banner, .wide],
+        defaultSize: .banner,
         view: { AnyView(VolumeMixerPanel(ctx: $0)) })
 
     @Environment(\.fluent) private var theme
@@ -42,41 +42,40 @@ struct VolumeMixerPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// Quick settings sliders: the output device (with its picker), the microphone, then each app.
+    /// Wide panels lay the rows out two across.
     private func full(_ a: AudioState) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            DevicePicker(ctx: ctx, audio: a)
-            if let out = a.output {
-                VolumeRow(symbol: Self.speakerSymbol(out), icon: nil, title: nil, volume: out.volume, muted: out.muted,
-                          onMute: { ctx.run("audio", "toggleMute") },
-                          onVolume: { v in ctx.send("audio", "setVolume", ["volume": .number(v)]) })
-            }
-            if let mic = a.input {
-                VolumeRow(symbol: mic.muted ? "mic.slash" : "mic", icon: nil, title: nil, volume: mic.volume, muted: mic.muted,
-                          onMute: { ctx.run("audio", "toggleMicMute") },
-                          onVolume: { v in ctx.send("audio", "setMicVolume", ["volume": .number(v)]) })
-            }
-            if ctx.size == .large || ctx.size == .wide {
-                Text("Apps")
-                    .font(FluentFont.caption.weight(.semibold))
-                    .foregroundStyle(theme.textSecondary)
-                    .padding(.top, 6)
-                ScrollView {
-                    LazyVGrid(columns: ctx.size == .wide ? [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)] : [GridItem(.flexible())],
-                              spacing: 0) {
-                        ForEach(a.sessions) { s in
-                            VolumeRow(symbol: s.icon == nil ? "speaker.wave.2" : nil, icon: s.icon, title: s.name, volume: s.volume, muted: s.muted,
-                                      onMute: { ctx.run("audio", "toggleSessionMute", ["id": .string(s.id)]) },
-                                      onVolume: { v in ctx.send("audio", "setSessionVolume", ["id": .string(s.id), "volume": .number(v)]) })
-                                .opacity(s.active ? 1 : 0.7)
-                        }
+        let twoUp = ctx.size == .wide || ctx.size == .banner
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 28), count: twoUp ? 2 : 1)
+        return GeometryReader { g in
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 2) {
+                    if let out = a.output {
+                        VolumeRow(symbol: Self.speakerSymbol(out), icon: nil, title: out.name, volume: out.volume, muted: out.muted,
+                                  onMute: { ctx.run("audio", "toggleMute") },
+                                  onVolume: { v in ctx.send("audio", "setVolume", ["volume": .number(v)]) },
+                                  trailing: AnyView(DevicePicker(ctx: ctx, audio: a)))
+                    } else {
+                        Text("No output device").font(FluentFont.caption).foregroundStyle(theme.textTertiary)
+                            .frame(maxWidth: .infinity, minHeight: Fluent.touchTarget, alignment: .leading)
+                    }
+                    if let mic = a.input {
+                        VolumeRow(symbol: mic.muted ? "mic.slash" : "mic", icon: nil, title: mic.name, volume: mic.volume, muted: mic.muted,
+                                  onMute: { ctx.run("audio", "toggleMicMute") },
+                                  onVolume: { v in ctx.send("audio", "setMicVolume", ["volume": .number(v)]) })
+                    }
+                    ForEach(a.sessions) { s in
+                        VolumeRow(symbol: s.icon == nil ? "speaker.wave.2" : nil, icon: s.icon, title: s.name, volume: s.volume, muted: s.muted,
+                                  onMute: { ctx.run("audio", "toggleSessionMute", ["id": .string(s.id)]) },
+                                  onVolume: { v in ctx.send("audio", "setSessionVolume", ["id": .string(s.id), "volume": .number(v)]) })
+                            .opacity(s.active ? 1 : 0.7)
                     }
                 }
-                .scrollIndicators(.hidden)
-                if a.sessions.isEmpty {
-                    Text("No apps are playing sound").font(FluentFont.caption).foregroundStyle(theme.textTertiary)
-                }
+                // Two-across rows sit in the middle of a shallow banner; a single column reads from the top.
+                .frame(minHeight: g.size.height, alignment: twoUp ? .center : .top)
             }
-            Spacer(minLength: 0)
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
         }
     }
 
@@ -86,7 +85,7 @@ struct VolumeMixerPanel: View {
     }
 }
 
-/// Output device chooser, like the "Sound output" chevron in Quick Settings.
+/// Output device chooser: the chevron beside the volume slider in quick settings.
 private struct DevicePicker: View {
     let ctx: PanelContext
     let audio: AudioState
@@ -100,33 +99,33 @@ private struct DevicePicker: View {
                 }
             }
         }) {
-            HStack(spacing: 8) {
-                Image(systemName: "hifispeaker").font(.system(size: 13))
-                Text(audio.output?.name ?? "No output device").font(FluentFont.caption).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
-            }
-            .foregroundStyle(theme.textSecondary)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(theme.textSecondary)
+                .frame(width: 20, height: 36)
         }
-        .padding(.leading, -8)
+        .accessibilityLabel("Sound output")
     }
 }
 
 private struct VolumeRow: View {
     let symbol: String?
     let icon: String?
-    let title: String?
+    let title: String
     let volume: Double
     let muted: Bool
     let onMute: () -> Void
     let onVolume: (Double) -> Void
+    /// Shown after the value. The slot is always reserved, so sliders line up down a column.
+    var trailing: AnyView? = nil
     @Environment(\.fluent) private var theme
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Button(action: onMute) {
                 ZStack {
                     if let icon {
-                        RemoteImage(path: icon, contentMode: .fit).frame(width: 26, height: 26)
+                        RemoteImage(path: icon, contentMode: .fit).frame(width: 24, height: 24)
                             .saturation(muted ? 0 : 1)
                             .opacity(muted ? 0.5 : 1)
                     } else if let symbol {
@@ -140,24 +139,25 @@ private struct VolumeRow: View {
                     }
                 }
                 .foregroundStyle(muted ? theme.critical : theme.textPrimary)
-                .frame(width: 40, height: 40)
+                .frame(width: 28, height: 40)
             }
             .buttonStyle(FluentButtonStyle(kind: .subtle, compact: true))
-            .accessibilityLabel(muted ? "Unmute" : "Mute")
+            .accessibilityLabel(muted ? "Unmute \(title)" : "Mute \(title)")
 
-            VStack(alignment: .leading, spacing: -10) {
-                if let title {
-                    Text(title).font(FluentFont.caption).foregroundStyle(theme.textSecondary).lineLimit(1)
-                        .padding(.leading, 12)
-                }
+            VStack(alignment: .leading, spacing: -8) {
+                Text(title).font(.system(size: 12)).foregroundStyle(theme.textSecondary).lineLimit(1)
+                    .padding(.leading, 12)
                 RemoteSlider(remote: volume, send: onVolume)
             }
 
             Text("\(Int((volume * 100).rounded()))")
-                .font(FluentFont.bodyStrong)
+                .font(FluentFont.body)
                 .monospacedDigit()
                 .foregroundStyle(muted ? theme.textTertiary : theme.textPrimary)
                 .frame(width: 34, alignment: .trailing)
+
+            ZStack { if let trailing { trailing } }
+                .frame(width: 36)
         }
     }
 }
