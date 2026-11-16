@@ -57,7 +57,7 @@ struct SystemPanel: View {
             HStack(spacing: 10) {
                 Image(systemName: "laptopcomputer").font(.system(size: 20))
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(s.hostName).font(FluentFont.bodyStrong)
+                    Text(s.hostName).font(FluentFont.bodyStrong).lineLimit(1)
                     Text("Up \(Self.uptime(s.uptimeSeconds))").font(FluentFont.caption).foregroundStyle(theme.textSecondary)
                 }
             }

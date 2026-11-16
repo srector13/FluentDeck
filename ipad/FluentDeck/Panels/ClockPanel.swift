@@ -17,6 +17,12 @@ struct ClockPanel: View {
     @Environment(\.fluent) private var theme
 
     private static let uses12Hour = (DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current) ?? "").contains("a")
+    /// "1:24" or "13:24": no leading zero on a 12-hour clock.
+    private static let time: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = ClockPanel.uses12Hour ? "h:mm" : "HH:mm"
+        return formatter
+    }()
     private static let period: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "a"
@@ -31,7 +37,7 @@ struct ClockPanel: View {
                 let size = max(34, min(g.size.height * 0.6, g.size.width * 0.3))
                 VStack(alignment: .leading, spacing: size * 0.04) {
                     HStack(alignment: .firstTextBaseline, spacing: size * 0.1) {
-                        Text(date, format: .dateTime.hour(.defaultDigits(amPM: .omitted)).minute())
+                        Text(Self.time.string(from: date))
                             .font(.system(size: size, weight: .light))
                             .monospacedDigit()
                             .foregroundStyle(theme.textPrimary)
