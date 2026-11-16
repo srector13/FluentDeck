@@ -105,6 +105,27 @@ struct SystemState: Codable, Equatable {
     var uptimeSeconds: Double
 }
 
+/// Measured by the PC only when asked (the system panel's `details` action).
+struct SystemDetailsState: Codable, Equatable {
+    struct Disk: Codable, Equatable, Identifiable {
+        var name: String
+        var freeGb: Double
+        var totalGb: Double
+        var id: String { name }
+    }
+
+    struct BusyProcess: Codable, Equatable, Identifiable {
+        var name: String
+        /// Percent of the whole machine.
+        var cpu: Double
+        var memoryMb: Double
+        var id: String { name }
+    }
+
+    var disks: [Disk]
+    var processes: [BusyProcess]
+}
+
 struct ThemeState: Codable, Equatable {
     var isDark: Bool
     var accent: String

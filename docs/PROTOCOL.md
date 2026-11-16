@@ -46,7 +46,7 @@ bursts to ~30 per second per topic.
 | `media`  | `hasSession, source{appId,name}, title, artist, album, artwork, status, position, duration, positionAt, canPlay/canPause/canNext/canPrevious/canSeek/canShuffle/canRepeat, shuffle, repeat, sessions[]` | `playPause play pause next previous seek{seconds} shuffle{on} repeat{mode} selectSession{appId}` |
 | `audio`  | `output{id,name,volume,muted}, input{…}, devices[{id,name,isDefault}], sessions[{id,name,icon,volume,muted,active}]` | `setVolume{volume} toggleMute setMicVolume{volume} toggleMicMute setSessionVolume{id,volume} toggleSessionMute{id} setDefaultDevice{id}` |
 | `deck`   | `pages[{id,title,columns,buttons[{id,label,symbol,icon,iconFill,state{topic,path,equals},symbolOn,style,kind}]}], error, editable` | `press{buttonId} reload` and, when `editable`, the edit actions below |
-| `system` | `hostName, cpu, memory, memoryUsedGb, memoryTotalGb, battery{percent,charging}?, uptimeSeconds` | `lock sleep displayOff` |
+| `system` | `hostName, cpu, memory, memoryUsedGb, memoryTotalGb, battery{percent,charging}?, uptimeSeconds` | `lock sleep displayOff`, and `details` → `{disks[{name,freeGb,totalGb}], processes[{name,cpu,memoryMb}]}`, measured on request |
 | `theme`  | `isDark, accent, accentLight1..3, accentDark1..3` (hex `#RRGGBB`) | — |
 
 ### Editing deck keys

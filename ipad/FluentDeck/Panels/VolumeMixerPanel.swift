@@ -1,17 +1,20 @@
 import SwiftUI
 
 /// The volume half of quick settings: output device, master, mic, and per-app volume with real app icons.
+/// The compact sizes show the output and the microphone; their drawer has every app.
 struct VolumeMixerPanel: View {
     let ctx: PanelContext
 
     static let spec = PanelSpec(
         kind: "audio.mixer",
         title: "Volume Mixer",
-        summary: "Master and per-app volume, microphone mute, and output device switching.",
+        summary: "Output and microphone volume at a glance. Slide the handle up for each app’s volume and the output device.",
         symbol: "speaker.wave.2",
         requires: "audio",
         sizes: [.small, .medium, .large, .banner, .wide],
-        defaultSize: .banner,
+        defaultSize: .medium,
+        drawer: { AnyView(VolumeMixerDrawer(ctx: $0)) },
+        drawerSizes: [.small, .medium],
         view: { AnyView(VolumeMixerPanel(ctx: $0)) })
 
     @Environment(\.fluent) private var theme
@@ -43,51 +46,93 @@ struct VolumeMixerPanel: View {
     }
 
     /// Quick settings sliders: the output device (its name opens the picker), the microphone, then each app.
-    /// Wide panels lay the rows out two across.
+    /// Wide panels lay the rows out two across. The medium size stops after the microphone.
     private func full(_ a: AudioState) -> some View {
         let twoUp = ctx.size == .wide || ctx.size == .banner
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 36), count: twoUp ? 2 : 1)
+        let compact = ctx.size == .medium
         return GeometryReader { g in
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 2) {
-                    if let out = a.output {
-                        VolumeRow(symbol: Self.speakerSymbol(out), icon: nil, title: out.name, volume: out.volume, muted: out.muted,
-                                  onMute: { ctx.run("audio", "toggleMute") },
-                                  onVolume: { v in ctx.send("audio", "setVolume", ["volume": .number(v)]) },
-                                  menu: {
-                                      [FlyoutItem.header("Sound output")] + a.devices.map { d in
-                                          FlyoutItem.action(d.name, checked: d.isDefault) {
-                                              ctx.run("audio", "setDefaultDevice", ["id": .string(d.id)])
-                                          }
-                                      }
-                                  })
-                    } else {
-                        Text("No output device").font(FluentFont.caption).foregroundStyle(theme.textTertiary)
-                            .frame(maxWidth: .infinity, minHeight: Fluent.touchTarget, alignment: .leading)
-                    }
-                    if let mic = a.input {
-                        VolumeRow(symbol: mic.muted ? "mic.slash" : "mic", icon: nil, title: mic.name, volume: mic.volume, muted: mic.muted,
-                                  onMute: { ctx.run("audio", "toggleMicMute") },
-                                  onVolume: { v in ctx.send("audio", "setMicVolume", ["volume": .number(v)]) })
-                    }
-                    ForEach(a.sessions) { s in
-                        VolumeRow(symbol: s.icon == nil ? "speaker.wave.2" : nil, icon: s.icon, title: s.name, volume: s.volume, muted: s.muted,
-                                  onMute: { ctx.run("audio", "toggleSessionMute", ["id": .string(s.id)]) },
-                                  onVolume: { v in ctx.send("audio", "setSessionVolume", ["id": .string(s.id), "volume": .number(v)]) })
-                            .opacity(s.active ? 1 : 0.7)
-                    }
-                }
-                // Two-across rows sit in the middle of a shallow banner; a single column reads from the top.
-                .frame(minHeight: g.size.height, alignment: twoUp ? .center : .top)
+                MixerRows(ctx: ctx, audio: a, apps: !compact, columns: twoUp ? 2 : 1)
+                    // Rows sit in the middle of a shallow panel; a tall single column reads from the top.
+                    .frame(minHeight: g.size.height, alignment: twoUp || compact ? .center : .top)
             }
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.basedOnSize)
+            .scrollDisabled(compact)
         }
     }
 
     static func speakerSymbol(_ e: AudioEndpointState) -> String {
         if e.muted || e.volume <= 0.001 { return "speaker.slash" }
         return e.volume < 0.33 ? "speaker.wave.1" : e.volume < 0.66 ? "speaker.wave.2" : "speaker.wave.3"
+    }
+}
+
+/// The slider rows: output, microphone and, if asked, one per app playing sound.
+private struct MixerRows: View {
+    let ctx: PanelContext
+    let audio: AudioState
+    var apps = true
+    var columns = 1
+    @Environment(\.fluent) private var theme
+
+    /// Height of one row, for views that size themselves to the rows.
+    static let rowHeight: CGFloat = 54
+
+    static func count(_ audio: AudioState, apps: Bool = true) -> Int {
+        1 + (audio.input == nil ? 0 : 1) + (apps ? audio.sessions.count : 0)
+    }
+
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 36), count: columns), spacing: 2) {
+            if let out = audio.output {
+                VolumeRow(symbol: VolumeMixerPanel.speakerSymbol(out), icon: nil, title: out.name, volume: out.volume, muted: out.muted,
+                          onMute: { ctx.run("audio", "toggleMute") },
+                          onVolume: { v in ctx.send("audio", "setVolume", ["volume": .number(v)]) },
+                          menu: {
+                              [FlyoutItem.header("Sound output")] + audio.devices.map { d in
+                                  FlyoutItem.action(d.name, checked: d.isDefault) {
+                                      ctx.run("audio", "setDefaultDevice", ["id": .string(d.id)])
+                                  }
+                              }
+                          })
+            } else {
+                Text("No output device").font(FluentFont.caption).foregroundStyle(theme.textTertiary)
+                    .frame(maxWidth: .infinity, minHeight: Fluent.touchTarget, alignment: .leading)
+            }
+            if let mic = audio.input {
+                VolumeRow(symbol: mic.muted ? "mic.slash" : "mic", icon: nil, title: mic.name, volume: mic.volume, muted: mic.muted,
+                          onMute: { ctx.run("audio", "toggleMicMute") },
+                          onVolume: { v in ctx.send("audio", "setMicVolume", ["volume": .number(v)]) })
+            }
+            if apps {
+                ForEach(audio.sessions) { s in
+                    VolumeRow(symbol: s.icon == nil ? "speaker.wave.2" : nil, icon: s.icon, title: s.name, volume: s.volume, muted: s.muted,
+                              onMute: { ctx.run("audio", "toggleSessionMute", ["id": .string(s.id)]) },
+                              onVolume: { v in ctx.send("audio", "setSessionVolume", ["id": .string(s.id), "volume": .number(v)]) })
+                        .opacity(s.active ? 1 : 0.7)
+                }
+            }
+        }
+    }
+}
+
+/// The mixer's drawer: every slider, two across, as tall as its rows need.
+struct VolumeMixerDrawer: View {
+    let ctx: PanelContext
+
+    var body: some View {
+        if let audio = ctx.state("audio", as: AudioState.self) {
+            let rows = (MixerRows.count(audio) + 1) / 2
+            ScrollView {
+                MixerRows(ctx: ctx, audio: audio, columns: 2)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: min(CGFloat(rows) * MixerRows.rowHeight + 8, 430))
+        } else {
+            PanelEmptyState(symbol: "speaker.slash", text: "Audio unavailable").frame(height: 120)
+        }
     }
 }
 

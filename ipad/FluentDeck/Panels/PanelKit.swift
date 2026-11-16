@@ -10,7 +10,8 @@ import SwiftUI
 //   3. Give it a `static let spec = PanelSpec(...)` and add it to `PanelCatalog.all`.
 //
 // Sizing, the options menu, persistence, boards, drag-to-reorder, theming and the
-// "Add widgets" picker all come for free.
+// "Add widgets" picker all come for free. Give the spec a `drawer` and compact sizes get a
+// handle that slides the rest of the controls up over the board.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Widget sizes, as spans of grid cells. A landscape board is 6 × 4 cells, so a tall Now Playing,
@@ -104,6 +105,11 @@ struct PanelSpec: Identifiable {
     var background: (@MainActor (PanelContext) -> AnyView)? = nil
     /// Stays interactive while the board is customized, to edit its own content (the deck's keys).
     var editsInPlace = false
+    /// The rest of the widget's controls, shown in a drawer that slides up from a handle under it.
+    var drawer: (@MainActor (PanelContext) -> AnyView)? = nil
+    /// Sizes that get the drawer handle; nil means every size. Sizes that already show everything
+    /// leave it out.
+    var drawerSizes: [TileSize]? = nil
     let view: @MainActor (PanelContext) -> AnyView
 }
 
@@ -115,6 +121,8 @@ enum PanelCatalog {
         VolumeMixerPanel.spec,
         DeckPanel.spec,
         SystemPanel.spec,
+        CalendarPanel.spec,
+        RemindersPanel.spec,
         ClockPanel.spec,
     ]
 

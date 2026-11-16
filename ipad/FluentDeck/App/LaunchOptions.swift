@@ -9,11 +9,13 @@ import Foundation
 /// | `-FluentDeckConnect host[:port]` | connect to this PC at launch (e.g. the DevHost on 127.0.0.1) |
 /// | `-FluentDeckPairCode 123456` | answer the pairing prompt with this code |
 /// | `-FluentDeckBoard N` | open board N (0-based) |
+/// | `-FluentDeckDemoPlanner YES` | stand-in calendar events and reminders; iOS isn't asked for access |
 enum LaunchOptions {
     private static var args: UserDefaults { .standard }
 
     static var reset: Bool { args.bool(forKey: "FluentDeckReset") }
     static var pairCode: String? { args.string(forKey: "FluentDeckPairCode").flatMap { $0.isEmpty ? nil : $0 } }
+    static var demoPlanner: Bool { args.bool(forKey: "FluentDeckDemoPlanner") }
     static var board: Int? { args.object(forKey: "FluentDeckBoard") == nil ? nil : args.integer(forKey: "FluentDeckBoard") }
 
     static var connect: HostEndpoint? {

@@ -34,14 +34,16 @@ final class LayoutStore {
                 TileInstance(kind: NowPlayingPanel.spec.kind, size: .tall),
                 TileInstance(kind: DeckPanel.spec.kind, size: .huge, config: ["page": "main"]),
                 TileInstance(kind: ClockPanel.spec.kind, size: .medium),
-                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .banner),
+                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .medium),
+                TileInstance(kind: CalendarPanel.spec.kind, size: .medium),
             ])
             let dev = Board(name: "Dev", tiles: [
                 TileInstance(kind: DeckPanel.spec.kind, size: .huge, config: ["page": "dev"]),
-                TileInstance(kind: SystemPanel.spec.kind, size: .large),
+                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .large),
                 TileInstance(kind: NowPlayingPanel.spec.kind, size: .medium),
                 TileInstance(kind: ClockPanel.spec.kind, size: .medium),
-                TileInstance(kind: VolumeMixerPanel.spec.kind, size: .banner),
+                TileInstance(kind: RemindersPanel.spec.kind, size: .medium),
+                TileInstance(kind: SystemPanel.spec.kind, size: .medium),
             ])
             boards = [home, dev]
             selectedBoardID = home.id

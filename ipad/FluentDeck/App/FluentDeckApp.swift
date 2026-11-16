@@ -16,6 +16,7 @@ struct FluentDeckApp: App {
                 .environment(app)
                 .environment(app.connection)
                 .environment(app.overlays)
+                .environment(app.planner)
         }
         .onChange(of: scenePhase) { _, phase in app.scenePhaseChanged(phase) }
     }

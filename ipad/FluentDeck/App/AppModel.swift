@@ -10,6 +10,8 @@ final class AppModel {
     let browser = HostBrowser()
     let layout = LayoutStore()
     let overlays = OverlayCenter()
+    /// The iPad's own calendar and reminders.
+    let planner = PlannerStore()
 
     var editing = false
     /// The user chose "Switch PC…" — show the connect screen even though a PC is configured.
@@ -103,6 +105,7 @@ final class AppModel {
     func scenePhaseChanged(_ phase: ScenePhase) {
         switch phase {
         case .active:
+            planner.refresh()
             connection.resume()
             if !connection.isConnected { browser.start() }
             updateIdleTimer()

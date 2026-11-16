@@ -116,6 +116,14 @@ async def main(a):
         check(abs(c.states["audio"]["output"]["volume"] - 0.99) < 1e-6 and count < 60,
               f"100 slider updates → {count} coalesced state frames, final volume correct")
 
+        r = await c.invoke("system", "details")
+        first = r["data"] if r["ok"] else {}
+        check(r["ok"] and len(first["processes"]) > 0 and all(p["name"] and p["memoryMb"] >= 0 for p in first["processes"]),
+              f"system.details lists {len(first.get('processes', []))} processes and {len(first.get('disks', []))} disk(s)")
+        await asyncio.sleep(1.1)
+        r = await c.invoke("system", "details")
+        check(r["ok"] and all(0 <= p["cpu"] <= 100 for p in r["data"]["processes"]), "a second sample reports CPU shares")
+
         art = c.states["media"]["artwork"]
         check(isinstance(art, str) and art.startswith("/assets/"), "media artwork is an asset path")
         base = f"http://{a.host}:{a.port}"

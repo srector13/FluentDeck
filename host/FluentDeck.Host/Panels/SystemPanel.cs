@@ -4,8 +4,9 @@ using FluentDeck.Host.Interop;
 
 namespace FluentDeck.Host.Panels;
 
-/// <summary>CPU / memory / battery at 0.5 Hz, plus lock, sleep and screen-off.</summary>
-internal sealed class SystemPanel : PanelProvider, IDisposable
+/// <summary>CPU / memory / battery at 0.5 Hz, plus lock, sleep and screen-off. Disks and the busiest
+/// processes are measured only when a device asks for "details".</summary>
+internal sealed class SystemPanel(SystemDetails details) : PanelProvider, IDisposable
 {
     private System.Threading.Timer? _timer;
     private long _lastIdle, _lastTotal;
@@ -58,6 +59,8 @@ internal sealed class SystemPanel : PanelProvider, IDisposable
     {
         switch (action)
         {
+            case "details":
+                return Task.FromResult<object?>(details.Sample());
             case "lock":
                 if (!Native.LockWorkStation()) throw new PanelActionException("Windows refused to lock.");
                 break;

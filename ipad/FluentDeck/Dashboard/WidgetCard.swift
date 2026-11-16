@@ -24,11 +24,19 @@ struct WidgetCard: View {
         let shape = RoundedRectangle(cornerRadius: Fluent.panelRadius, style: .continuous)
         // The outline sits in the gutter, so it never touches the widget's own edges.
         let outset = -Fluent.gutter * 0.4
-        Group {
-            if available {
-                spec.view(ctx)
-            } else {
-                PanelEmptyState(symbol: "exclamationmark.triangle", text: "This PC doesn’t provide “\(spec.requires ?? "")”")
+        VStack(spacing: 0) {
+            Group {
+                if available {
+                    spec.view(ctx)
+                } else {
+                    PanelEmptyState(symbol: "exclamationmark.triangle", text: "This PC doesn’t provide “\(spec.requires ?? "")”")
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            if let drawer = spec.drawer, available, !preview, spec.drawerSizes?.contains(tile.size) ?? true {
+                DrawerHandle(title: spec.title) {
+                    ctx.overlays.openDrawer(title: spec.title) { drawer(ctx) }
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -63,6 +71,31 @@ struct WidgetCard: View {
                 .offset(x: -outset * 0.4, y: outset * 0.4)
                 .accessibilityLabel("Options for \(spec.title)")
             }
+        }
+    }
+
+    /// The grabber under a compact widget. Tap it or flick it up for the widget's drawer.
+    private struct DrawerHandle: View {
+        let title: String
+        let open: () -> Void
+        @Environment(\.fluent) private var theme
+
+        var body: some View {
+            Button(action: open) {
+                Capsule()
+                    .fill(theme.textTertiary.opacity(0.7))
+                    .frame(width: 36, height: 5)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 26, alignment: .bottom)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8).onEnded { drag in
+                    if drag.translation.height < -12 { open() }
+                }
+            )
+            .accessibilityLabel("More \(title) controls")
         }
     }
 

@@ -26,6 +26,7 @@ public static class FluentDeckServer
             .AddSingleton(paths)
             .AddSingleton(settings)
             .AddSingleton<AssetStore>()
+            .AddSingleton<SystemDetails>()
             .AddSingleton<AuthStore>()
             .AddSingleton<PanelRegistry>()
             .AddSingleton<Hub>();

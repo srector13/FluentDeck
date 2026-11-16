@@ -1,7 +1,8 @@
 import SwiftUI
 import Observation
 
-// Windows-style MenuFlyout and ContentDialog, drawn by the app itself (iOS menus and alerts look iOS).
+// Windows-style MenuFlyout and ContentDialog, drawn by the app itself (iOS menus and alerts look iOS),
+// plus the drawer that slides up from a compact widget with the rest of its controls.
 
 struct FlyoutItem: Identifiable {
     enum Kind {
@@ -31,8 +32,24 @@ final class OverlayCenter {
         var width: CGFloat
     }
 
+    struct Drawer {
+        var title: String
+        var content: AnyView
+    }
+
     var flyout: Flyout?
     private(set) var dialog: AnyView?
+    private(set) var drawer: Drawer?
+
+    /// Slide a sheet up over the board. One at a time; opening another replaces it.
+    func openDrawer<V: View>(title: String, @ViewBuilder _ content: () -> V) {
+        let sheet = Drawer(title: title, content: AnyView(content()))
+        withAnimation(.snappy(duration: 0.32)) { drawer = sheet }
+    }
+
+    func closeDrawer() {
+        withAnimation(.snappy(duration: 0.26)) { drawer = nil }
+    }
 
     func showFlyout(anchor: CGRect, items: [FlyoutItem], width: CGFloat = 260) {
         guard !items.isEmpty else { return }
@@ -60,6 +77,18 @@ struct OverlayHost: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
+                if let drawer = overlays.drawer {
+                    theme.smoke
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture { overlays.closeDrawer() }
+                        .transition(.opacity)
+                    DrawerSheet(drawer: drawer, maxHeight: geo.size.height * 0.78)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .padding(.horizontal, Fluent.margin)
+                        .padding(.bottom, 12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 if let flyout = overlays.flyout {
                     Color.black.opacity(0.001)
                         .contentShape(Rectangle())
@@ -94,6 +123,57 @@ struct OverlayHost: View {
             y = max(margin, anchor.minY - 4 - size.height)
         }
         return CGPoint(x: x, y: y)
+    }
+}
+
+/// The sheet that rises from a compact widget: a grabber, the widget's name, and its full controls.
+/// Drag the header down, tap outside, or tap the close button to put it away.
+private struct DrawerSheet: View {
+    let drawer: OverlayCenter.Drawer
+    let maxHeight: CGFloat
+    @Environment(OverlayCenter.self) private var overlays
+    @Environment(\.fluent) private var theme
+    @State private var pull: CGFloat = 0
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Fluent.panelRadius, style: .continuous)
+        VStack(spacing: 0) {
+            VStack(spacing: 6) {
+                Capsule().fill(theme.textTertiary).frame(width: 40, height: 5)
+                HStack {
+                    Text(drawer.title).font(FluentFont.bodyLarge.weight(.semibold)).foregroundStyle(theme.textPrimary)
+                    Spacer()
+                    FluentIconButton(symbol: "xmark", size: 13, tint: theme.textSecondary, label: "Close") { overlays.closeDrawer() }
+                        .padding(.trailing, -14)
+                }
+            }
+            .padding(.top, 10)
+            .padding(.horizontal, 24)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture()
+                    .onChanged { pull = max(0, $0.translation.height) }
+                    .onEnded { drag in
+                        if drag.translation.height > 70 {
+                            overlays.closeDrawer()
+                        } else {
+                            withAnimation(.snappy(duration: 0.2)) { pull = 0 }
+                        }
+                    }
+            )
+            drawer.content
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+                .padding(.bottom, 22)
+        }
+        .frame(maxWidth: 780)
+        .frame(maxHeight: maxHeight, alignment: .top)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(shape.fill(theme.dialogBody))
+        .clipShape(shape)
+        .shadow(color: .black.opacity(0.5), radius: 40, y: 10)
+        .offset(y: pull)
+        .accessibilityAddTraits(.isModal)
     }
 }
 

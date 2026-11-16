@@ -11,8 +11,8 @@ public static class BuiltInPanels
     public static readonly PanelDescriptor Audio = new("audio", "Audio", "speaker.wave.2", 1,
         ["setVolume", "toggleMute", "setMicVolume", "toggleMicMute", "setSessionVolume", "toggleSessionMute", "setDefaultDevice"]);
 
-    public static readonly PanelDescriptor System = new("system", "System", "cpu", 1,
-        ["lock", "sleep", "displayOff"]);
+    public static readonly PanelDescriptor System = new("system", "System", "cpu", 2,
+        ["lock", "sleep", "displayOff", "details"]);
 
     public static readonly PanelDescriptor Theme = new("theme", "Theme", "paintpalette", 1, []);
 }

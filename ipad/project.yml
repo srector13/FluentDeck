@@ -50,6 +50,9 @@ targets:
         UIViewControllerBasedStatusBarAppearance: true
         # Bonjour discovery of the PC and plain ws:// on the LAN.
         NSLocalNetworkUsageDescription: FluentDeck finds and controls your Windows PC on your home network.
+        # The Calendar and Reminders widgets read the iPad's own data (EventKit).
+        NSCalendarsFullAccessUsageDescription: FluentDeck shows your upcoming events on its Calendar widget.
+        NSRemindersFullAccessUsageDescription: FluentDeck shows your reminders on its Reminders widget and lets you tick them off.
         NSBonjourServices:
           - _fluentdeck._tcp
         NSAppTransportSecurity:

@@ -208,7 +208,7 @@ internal sealed class SimAudioPanel(AssetStore assets) : PanelProvider
     }
 }
 
-internal sealed class SimSystemPanel(ILogger<SimSystemPanel> log) : PanelProvider, IDisposable
+internal sealed class SimSystemPanel(ILogger<SimSystemPanel> log, SystemDetails details) : PanelProvider, IDisposable
 {
     private readonly Random _rng = new();
     private double _cpu = 12;
@@ -236,6 +236,7 @@ internal sealed class SimSystemPanel(ILogger<SimSystemPanel> log) : PanelProvide
 
     public override Task<object?> InvokeAsync(string action, JsonObject args, CancellationToken ct)
     {
+        if (action == "details") return Task.FromResult<object?>(details.Sample()); // real disks and processes of this machine
         if (action is not ("lock" or "sleep" or "displayOff")) throw UnknownAction(action);
         log.LogInformation("[system] {Action} (simulated)", action);
         return Task.FromResult<object?>(null);

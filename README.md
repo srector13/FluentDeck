@@ -19,11 +19,17 @@
 
 | Widget | Sizes | What it does |
 |---|---|---|
-| **Now Playing** | M / L / Tall / Wide | Album art, title and artist, a scrubber, shuffle/repeat, and a picker when several apps are playing. It reads Windows' media transport controls (the same source as the Quick Settings media flyout), so it works with Spotify, Apple Music, browsers, VLC and others without per-app code. |
-| **Volume Mixer** | S / M / L / Banner / Wide | Master volume, the mic, and a slider for each app with its real Windows icon. Includes an output-device switcher. |
+| **Now Playing** | M ▴ / L / Tall / Wide | Album art, title and artist, a scrubber, shuffle/repeat, and a picker when several apps are playing. It reads Windows' media transport controls (the same source as the Quick Settings media flyout), so it works with Spotify, Apple Music, browsers, VLC and others without per-app code. |
+| **Volume Mixer** | S ▴ / M ▴ / L / Banner / Wide | Output and mic volume at a glance; its drawer has a slider for each app with its real Windows icon. The output device's name opens the device switcher. |
 | **Deck** | S / M / L / Wide / XL | Stream Deck–style keys. They can launch apps and URIs, send hotkeys, type text, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). Edit them on the iPad or in `deck.json`. |
-| **System** | S / M / L | CPU ring, memory, battery and uptime, plus Lock / Sleep / Screen off. |
+| **System** | S ▴ / M ▴ / L | CPU ring, memory, battery and uptime, plus Lock / Sleep / Screen off. Its drawer adds disks and the busiest apps, measured only while it is open. |
+| **Calendar** | S ▴ / M ▴ / L ▴ | What's next on the calendars set up on the iPad. Its drawer shows the week ahead. Works without the PC. |
+| **Reminders** | S ▴ / M ▴ / L ▴ | Open reminders from the iPad, with a tap to tick one off. Its drawer has the full list. Works without the PC. |
 | **Clock** | S / M / L | Large, light numerals. Runs on the iPad only. It's also the smallest example panel. |
+
+**▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a drawer slides over the board with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
+
+Calendar and Reminders read the iPad's own accounts through EventKit, so iOS asks for access the first time each is shown.
 
 You can set up any number of **boards** (tabs, like Stream Deck profiles). A board fills the screen like a hardware deck: 6 × 4 cells in landscape, 4 × 7 in portrait, and it scrolls only if you pin more than that. The bottom line holds **Add widgets** (+), **Customize** (pencil) and settings (gear). While customizing, each widget shows a dashed outline and a **⋯** button for its size, widget-specific options (e.g. which deck page to show) and *Unpin*, and you can drag widgets to reorder them.
 
@@ -82,6 +88,7 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 | `-FluentDeckConnect host[:port]` | connect to this PC at launch |
 | `-FluentDeckPairCode 123456` | answer the pairing prompt with this code |
 | `-FluentDeckBoard N` | open board N (0-based) |
+| `-FluentDeckDemoPlanner YES` | stand-in calendar events and reminders; iOS isn't asked for access |
 
 ## Editing the deck
 
@@ -175,6 +182,8 @@ struct AgentsPanel: View {
 }
 // PanelCatalog.all: add AgentsPanel.spec
 ```
+
+To give a widget a drawer, add `drawer: { AnyView(AgentsDrawer(ctx: $0)) }` to its spec (and `drawerSizes:` if only its compact sizes need one). A widget that needs no PC, like Calendar, leaves out `requires:` and reads its data on the iPad.
 
 If a PC doesn't provide a topic yet, the picker shows that widget as unavailable, so older hosts degrade gracefully.
 

@@ -12,6 +12,8 @@ struct NowPlayingPanel: View {
         requires: "media",
         sizes: [.medium, .large, .tall, .wide],
         defaultSize: .tall,
+        drawer: { AnyView(NowPlayingDrawer(ctx: $0)) },
+        drawerSizes: [.medium],
         view: { AnyView(NowPlayingPanel(ctx: $0)) })
 
     @Environment(\.fluent) private var theme
@@ -102,6 +104,40 @@ struct NowPlayingPanel: View {
                 TransportRow(ctx: ctx, media: m, prominent: true)
             }
             .foregroundStyle(theme.textPrimary)
+        }
+    }
+}
+
+/// The compact player's drawer: large cover, source, scrubber and the full transport.
+struct NowPlayingDrawer: View {
+    let ctx: PanelContext
+    @Environment(\.fluent) private var theme
+
+    var body: some View {
+        if let m = ctx.state("media", as: MediaState.self), m.hasSession {
+            HStack(alignment: .top, spacing: 28) {
+                Artwork(path: m.artwork, radius: Fluent.artRadius)
+                    .frame(width: 220, height: 220)
+                VStack(alignment: .leading, spacing: 4) {
+                    SourcePicker(ctx: ctx, media: m)
+                    Text(m.title ?? "Unknown title")
+                        .font(FluentFont.title)
+                        .foregroundStyle(theme.textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.7)
+                    Text([m.artist, m.album].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " — "))
+                        .font(FluentFont.bodyLarge)
+                        .foregroundStyle(theme.textSecondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Scrubber(ctx: ctx, media: m)
+                    TransportRow(ctx: ctx, media: m, prominent: true)
+                }
+                .padding(.horizontal, 12)
+            }
+            .frame(height: 220)
+        } else {
+            PanelEmptyState(symbol: "music.note", text: "Nothing is playing").frame(height: 120)
         }
     }
 }
