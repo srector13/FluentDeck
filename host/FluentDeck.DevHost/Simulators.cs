@@ -249,3 +249,23 @@ internal sealed class SimThemePanel : PanelProvider
     public override Task StartAsync(CancellationToken ct) { Publish(ThemeState.Default); return Task.CompletedTask; }
     public override Task<object?> InvokeAsync(string action, JsonObject args, CancellationToken ct) => throw UnknownAction(action);
 }
+
+/// <summary>Two named virtual desktops, the second for a full-screen remote session.</summary>
+internal sealed class SimDesktopsPanel(ILogger<SimDesktopsPanel> log) : PanelProvider
+{
+    private readonly IReadOnlyList<DesktopInfo> _desktops = [new(1, "Desktop 1"), new(2, "Omnissa")];
+    private int _current = 1;
+
+    public override PanelDescriptor Descriptor => BuiltInPanels.Desktops;
+    public override Task StartAsync(CancellationToken ct) { Emit(); return Task.CompletedTask; }
+
+    private void Emit() => Publish(new DesktopsState(_current, _desktops));
+
+    public override Task<object?> InvokeAsync(string action, JsonObject args, CancellationToken ct)
+    {
+        _current = DesktopSwitch.Target(action, args, _current, _desktops.Count);
+        log.LogInformation("[desktops] {Action} -> desktop {Current} (simulated)", action, _current);
+        Emit();
+        return Task.FromResult<object?>(null);
+    }
+}

@@ -71,7 +71,7 @@ enum DeckEditing {
 
 /// What pressing a key does, as the editor groups it.
 enum DeckKeyKind: String, CaseIterable, Identifiable {
-    case app, hotkey, link, text, control
+    case app, hotkey, link, text, control, desktop
     /// A sequence or an action this editor has no form for. It is kept as it is.
     case other
 
@@ -84,6 +84,7 @@ enum DeckKeyKind: String, CaseIterable, Identifiable {
         case .link: return "Link"
         case .text: return "Type text"
         case .control: return "PC control"
+        case .desktop: return "Desktop"
         case .other: return "Custom"
         }
     }
@@ -113,6 +114,56 @@ struct DeckControlPreset: Identifiable {
         DeckControlPreset(panel: "system", action: "sleep", title: "Sleep", symbol: "moon"),
         DeckControlPreset(panel: "system", action: "displayOff", title: "Turn the screen off", symbol: "display"),
     ]
+}
+
+/// Where a desktop key goes: a numbered desktop, or the next or previous one.
+enum DeckDesktopTarget: Hashable {
+    case index(Int)
+    case next, previous
+
+    var symbol: String {
+        switch self {
+        case .index(let n): return n <= 50 ? "\(n).square" : "rectangle.split.3x1"
+        case .next: return "arrow.right.square"
+        case .previous: return "arrow.left.square"
+        }
+    }
+
+    func title(_ desktops: [DesktopsState.Desktop]) -> String {
+        switch self {
+        case .index(let n): return desktops.first { $0.index == n }?.name ?? "Desktop \(n)"
+        case .next: return "Next desktop"
+        case .previous: return "Previous desktop"
+        }
+    }
+
+    /// The deck.json action, and for a numbered desktop the binding that lights the key while
+    /// that desktop is showing.
+    var action: JSON {
+        switch self {
+        case .index(let n):
+            return .object(["type": "builtin", "panel": "desktops", "action": "switch", "args": .object(["index": .number(Double(n))])])
+        case .next: return .object(["type": "builtin", "panel": "desktops", "action": "next"])
+        case .previous: return .object(["type": "builtin", "panel": "desktops", "action": "previous"])
+        }
+    }
+
+    var state: DeckBinding? {
+        if case .index(let n) = self { return DeckBinding(topic: "desktops", path: "current", equals: .number(Double(n))) }
+        return nil
+    }
+
+    init?(action: JSON?) {
+        guard action?["panel"]?.string == "desktops" else { return nil }
+        switch action?["action"]?.string {
+        case "next": self = .next
+        case "previous": self = .previous
+        case "switch":
+            guard let n = action?["args"]?["index"]?.double else { return nil }
+            self = .index(Int(n))
+        default: return nil
+        }
+    }
 }
 
 /// Builds hotkey strings the host understands: "Win+Shift+S", or steps separated by spaces.
@@ -221,6 +272,7 @@ struct DeckKeyEditor: View {
     @State private var link = ""
     @State private var text = ""
     @State private var controlID: String?
+    @State private var desktop: DeckDesktopTarget?
     @State private var accent = false
 
     @State private var symbol = "app"
@@ -314,6 +366,7 @@ struct DeckKeyEditor: View {
     private var kinds: [DeckKeyKind] {
         var list: [DeckKeyKind] = [.app, .hotkey, .link, .text]
         if !presets.isEmpty { list.append(.control) }
+        if ctx.connection.hostProvides("desktops") { list.append(.desktop) }
         if originalKind == .other { list.append(.other) }
         return list
     }
@@ -349,6 +402,7 @@ struct DeckKeyEditor: View {
         case .text:
             TextBox(placeholder: "Text to type on the PC", text: $text)
         case .control: controlFields
+        case .desktop: desktopFields
         case .other:
             note("This key runs a multi-step or custom action. Change its steps in deck.json on the PC. Its label and icon can be changed here.")
         }
@@ -417,6 +471,34 @@ struct DeckKeyEditor: View {
         }
     }
 
+    /// The PC's desktops by name, then next and previous. A numbered desktop's key lights up while
+    /// that desktop is showing.
+    private var desktopFields: some View {
+        let desktops = ctx.connection.store.box("desktops").decoded(DesktopsState.self)?.desktops ?? []
+        let targets = desktops.map { DeckDesktopTarget.index($0.index) } + [.previous, .next]
+        return VStack(alignment: .leading, spacing: 2) {
+            ForEach(targets, id: \.self) { target in
+                Button { choose(target, desktops) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: target.symbol).font(.system(size: 16)).frame(width: 26)
+                        Text(target.title(desktops)).font(AppFont.body)
+                        Spacer(minLength: 0)
+                        if target == desktop { Image(systemName: "checkmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(theme.accent) }
+                    }
+                    .foregroundStyle(theme.textPrimary)
+                    .padding(.horizontal, 10)
+                    .frame(height: 44)
+                    .background(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
+                        .fill(target == desktop ? theme.controlFill : Color.clear))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            note("Switches desktops with Ctrl+Win+Left/Right, as many times as it takes. It works even when a full-screen remote desktop (Omnissa, RDP) has the keyboard. Add desktops on the PC with Win+Ctrl+D or Task View.")
+                .padding(.top, 6)
+        }
+    }
+
     private var symbolFields: some View {
         VStack(alignment: .leading, spacing: 8) {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 4)], spacing: 4) {
@@ -479,6 +561,15 @@ struct DeckKeyEditor: View {
         if label.trimmingCharacters(in: .whitespaces).isEmpty { label = preset.title }
     }
 
+    private func choose(_ target: DeckDesktopTarget, _ desktops: [DesktopsState.Desktop]) {
+        let previousTitle = desktop?.title(desktops)
+        desktop = target
+        symbol = target.symbol
+        useImage = false
+        let current = label.trimmingCharacters(in: .whitespaces)
+        if current.isEmpty || current == previousTitle { label = target.title(desktops) }
+    }
+
     private func useAppIcon() {
         let path = target.trimmingCharacters(in: .whitespaces)
         icon = path
@@ -531,7 +622,10 @@ struct DeckKeyEditor: View {
             text = action?["text"]?.string ?? ""
         case "builtin":
             let id = "\(action?["panel"]?.string ?? "").\(action?["action"]?.string ?? "")"
-            if DeckControlPreset.all.contains(where: { $0.id == id }) {
+            if let target = DeckDesktopTarget(action: action) {
+                kind = .desktop
+                desktop = target
+            } else if DeckControlPreset.all.contains(where: { $0.id == id }) {
                 kind = .control
                 controlID = id
             } else {
@@ -586,6 +680,14 @@ struct DeckKeyEditor: View {
             key.action = .object(["type": "builtin", "panel": .string(preset.panel), "action": .string(preset.action)])
             key.state = preset.state
             key.symbolOn = preset.symbolOn
+        case .desktop:
+            guard let desktop else {
+                problem = "Choose which desktop the key should show."
+                return nil
+            }
+            key.action = desktop.action
+            key.state = desktop.state
+            key.symbolOn = nil
         case .other:
             key.action = original.action
         }
@@ -665,6 +767,7 @@ struct DeckKeyEditor: View {
 // MARK: - Pieces
 
 /// The key as it will look on the board.
+/// The key as it will look on the board: a module with its symbol and name, lit if set to be.
 private struct DeckKeyPreview: View {
     let symbol: String
     let iconAsset: String?
@@ -672,30 +775,43 @@ private struct DeckKeyPreview: View {
     let label: String
     let lit: Bool
     @Environment(\.theme) private var theme
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
-        let shape = Circle()
-        VStack(spacing: 9) {
-            ZStack {
-                shape.fill(lit ? theme.accent : theme.tileFill)
-                if let iconAsset, fill {
-                    RemoteImage(path: iconAsset, contentMode: .fill)
-                        .frame(width: 124, height: 124)
-                        .clipShape(shape)
-                } else if let iconAsset {
-                    RemoteImage(path: iconAsset, contentMode: .fit) { Image(systemName: "app").font(.system(size: 36)) }
-                        .frame(width: 60, height: 60)
-                } else {
-                    Image(systemName: symbol.isEmpty ? "square.dashed" : symbol).font(.system(size: 42))
+        let side: CGFloat = 140
+        let shape = RoundedRectangle(cornerRadius: Metrics.panelRadius, style: .continuous)
+        let ink: Color = lit ? (settings.litKeysUseAccent ? theme.textOnAccent : .black) : theme.textPrimary
+        ZStack {
+            if lit { shape.fill(settings.litKeysUseAccent ? theme.accent : .white) } else { ModuleSurface() }
+            if let iconAsset, fill {
+                RemoteImage(path: iconAsset, contentMode: .fill)
+                    .frame(width: side, height: side)
+                    .clipShape(shape)
+            } else {
+                Group {
+                    if let iconAsset {
+                        RemoteImage(path: iconAsset, contentMode: .fit) { Image(systemName: "app").font(.system(size: 30, weight: .medium)) }
+                            .frame(width: 50, height: 50)
+                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    } else {
+                        Image(systemName: symbol.isEmpty ? "square.dashed" : symbol).font(.system(size: 30, weight: .medium))
+                    }
                 }
+                .foregroundStyle(ink)
+                .padding(.bottom, 20)
             }
-            .foregroundStyle(lit ? theme.textOnAccent : theme.textPrimary)
-            .frame(width: 124, height: 124)
-            Text(label.isEmpty ? "Label" : label)
-                .font(.system(size: 13))
-                .foregroundStyle(label.isEmpty ? theme.textTertiary : theme.textSecondary)
-                .lineLimit(1)
-                .frame(width: 150)
+        }
+        .frame(width: side, height: side)
+        .overlay(alignment: .bottom) {
+            if settings.keyLabels {
+                Text(label.isEmpty ? "Label" : label)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(fill && iconAsset != nil ? .white : ink.opacity(label.isEmpty ? 0.35 : 0.75))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 12)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Preview of the key")

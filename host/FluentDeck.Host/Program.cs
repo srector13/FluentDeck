@@ -40,6 +40,7 @@ internal static class Program
         builder.Services.AddPanel<AudioPanel>();
         builder.Services.AddPanel<SystemPanel>();
         builder.Services.AddPanel<ThemePanel>();
+        builder.Services.AddPanel<DesktopsPanel>();
         builder.Services.AddSingleton<BonjourAdvertiser>();
 
         var app = builder.Build();

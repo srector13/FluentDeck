@@ -139,6 +139,7 @@ private struct HostMenu: View {
     var body: some View {
         Menu {
             Section(status) {
+                Button { app.promptRenamePC() } label: { Label("Rename…", systemImage: "pencil") }
                 Button { app.switchHost() } label: { Label("Switch PC…", systemImage: "arrow.left.arrow.right") }
                 Button(role: .destructive) { app.forgetCurrentHost() } label: {
                     Label("Forget \(app.connection.hostName)", systemImage: "xmark.circle")
@@ -189,7 +190,7 @@ private struct BoardMenu: View {
                 Button { withAnimation(.snappy) { layout.addBoard() } } label: { Label("New board", systemImage: "plus.rectangle.on.rectangle") }
             }
             Section {
-                Toggle("Keep screen awake", isOn: Binding(get: { app.keepAwake }, set: { app.keepAwake = $0 }))
+                Button { app.showSettings() } label: { Label("Settings…", systemImage: "gearshape") }
             }
         } label: {
             Label("More", systemImage: "ellipsis.circle")

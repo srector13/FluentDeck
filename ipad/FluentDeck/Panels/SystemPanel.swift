@@ -59,7 +59,7 @@ struct SystemPanel: View {
             HStack(spacing: 10) {
                 Image(systemName: "laptopcomputer").font(.system(size: 20))
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(s.hostName).font(AppFont.bodyStrong).lineLimit(1)
+                    Text(ctx.connection.hostName).font(AppFont.bodyStrong).lineLimit(1)
                     Text("Up \(Self.uptime(s.uptimeSeconds))").font(AppFont.caption).foregroundStyle(theme.textSecondary)
                 }
             }
@@ -125,7 +125,7 @@ struct SystemDrawer: View {
 
     private func load(_ s: SystemState) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("\(s.hostName) · up \(SystemPanel.uptime(Double(s.uptimeSeconds)))")
+            Text("\(ctx.connection.hostName) · up \(SystemPanel.uptime(Double(s.uptimeSeconds)))")
                 .font(AppFont.caption)
                 .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)

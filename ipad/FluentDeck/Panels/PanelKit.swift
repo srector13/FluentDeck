@@ -105,6 +105,9 @@ struct PanelSpec: Identifiable {
     var background: (@MainActor (PanelContext) -> AnyView)? = nil
     /// Stays interactive while the board is customized, to edit its own content (the deck's keys).
     var editsInPlace = false
+    /// Draws its own modules straight on the board (the deck: each key is a module), so the card
+    /// adds no platter or padding.
+    var bare = false
     /// The rest of the widget's controls, shown in a drawer that slides up from a handle under it.
     var drawer: (@MainActor (PanelContext) -> AnyView)? = nil
     /// Sizes that get the drawer handle; nil means every size. Sizes that already show everything
@@ -124,6 +127,7 @@ enum PanelCatalog {
         CalendarPanel.spec,
         RemindersPanel.spec,
         ClockPanel.spec,
+        DesktopsPanel.spec,
     ]
 
     static func spec(for kind: String) -> PanelSpec? { all.first { $0.kind == kind } }

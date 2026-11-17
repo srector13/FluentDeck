@@ -68,7 +68,7 @@ async def main(a):
         token = paired["token"]
         welcome = await c.recv()
         ids = [p["id"] for p in welcome["panels"]]
-        check(welcome["type"] == "welcome" and {"deck", "media", "audio", "system", "theme"} <= set(ids), f"welcome lists panels {ids}")
+        check(welcome["type"] == "welcome" and {"deck", "media", "audio", "system", "theme", "desktops"} <= set(ids), f"welcome lists panels {ids}")
 
         await c.send(type="subscribe", topics=ids)
         await c.until(lambda m: set(ids) <= set(c.states), what="snapshots")
@@ -93,6 +93,16 @@ async def main(a):
         check(r["ok"], "deck keys button runs")
         r = await c.invoke("deck", "press", buttonId="dev/focus")
         check(r["ok"], "deck sequence button runs")
+        d = c.states["desktops"]
+        check(d["current"] == 1 and [x["name"] for x in d["desktops"]] == ["Desktop 1", "Omnissa"], f"desktops lists {len(d['desktops'])} desktops, on {d['current']}")
+        r = await c.invoke("deck", "press", buttonId="dev/desktop-2")
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "desktops" and m["data"]["current"] == 2, what="desktop switch")
+        check(r["ok"], "a desktop key switches to desktop 2")
+        r = await c.invoke("desktops", "previous")
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "desktops" and m["data"]["current"] == 1, what="previous desktop")
+        check(r["ok"], "desktops.previous goes back")
+        r = await c.invoke("desktops", "switch", index=5)
+        check(not r["ok"] and "doesn't exist" in r["error"], "switching to a missing desktop → friendly error")
         r = await c.invoke("deck", "press", buttonId="main/nope")
         check(not r["ok"] and "no longer exists" in r["error"], "unknown button → friendly error")
         r = await c.invoke("media", "explode")

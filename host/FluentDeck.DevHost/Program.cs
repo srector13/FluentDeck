@@ -27,6 +27,7 @@ builder.Services.AddPanel<SimMediaPanel>();
 builder.Services.AddPanel<SimAudioPanel>();
 builder.Services.AddPanel<SimSystemPanel>();
 builder.Services.AddPanel<SimThemePanel>();
+builder.Services.AddPanel<SimDesktopsPanel>();
 
 var app = builder.Build();
 app.MapFluentDeck();

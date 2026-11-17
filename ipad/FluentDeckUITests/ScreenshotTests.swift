@@ -107,6 +107,38 @@ final class ScreenshotTests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
         sleep(3)
         shot("15-key-saved")
+
+        // 16. Settings, from the toolbar's More menu, switched to a solid background colour. The
+        // colour stays chosen for the rest of the run.
+        launch(app, connected(board: 0), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        app.buttons["More"].firstMatch.tap()
+        let settingsItem = app.buttons["Settings…"].firstMatch
+        XCTAssertTrue(settingsItem.waitForExistence(timeout: 10), "More menu has no Settings")
+        settingsItem.tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10), "Settings did not open")
+        app.buttons["Color"].firstMatch.tap()
+        sleep(2)
+        shot("16-settings")
+        app.buttons["Done"].firstMatch.tap()
+        waitUntilGone(app.navigationBars["Settings"])
+
+        // 17. A key that switches virtual desktops, on the Dev board.
+        launch(app, connected(board: 1), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        app.buttons["Customize"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 10))
+        app.buttons["Desktop 2"].firstMatch.tap()
+        XCTAssertTrue(editorTitle.waitForExistence(timeout: 15), "Key editor did not open for the desktop key")
+        sleep(2)
+        shot("17-key-editor-desktop")
+        app.buttons["Cancel"].firstMatch.tap()
+        waitUntilGone(editorTitle)
+        app.buttons["Done"].firstMatch.tap()
+        sleep(2)
+
+        // 18. The Dev board on the solid colour, with the Desktops widget.
+        shot("18-dev-board-color")
     }
 
     // MARK: helpers

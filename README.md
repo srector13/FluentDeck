@@ -2,7 +2,7 @@
 
 **FluentDeck is a touch controller for your Windows PC that runs on your iPad.** Think of it as Windows 11 crossed with a Stream Deck.
 
-- **On the iPad:** a native SwiftUI app in iOS dark mode. Boards live in the system tab bar, with a standard toolbar for adding widgets, customizing and the PC's connection. Each board is laid out like Control Center: translucent modules on a dark ground tinted by whatever is playing, with round toggle buttons for deck keys and thick pill sliders for volume. Menus, sheets and switches are the system's own.
+- **On the iPad:** a native SwiftUI app in iOS dark mode. Boards live in the system tab bar, with a standard toolbar for adding widgets, customizing and the PC's connection. Each board is laid out like Control Center: translucent modules on a dark ground tinted by whatever is playing (or a colour you choose), with deck keys that are modules of their own and thick pill sliders for volume. Menus, sheets and switches are the system's own.
 - **On the PC:** a small tray app (native on Arm64, so it runs natively on your Snapdragon). It exposes media, audio, system stats and a configurable button deck over your LAN.
 
 ```
@@ -19,19 +19,20 @@
 
 | Widget | Sizes | What it does |
 |---|---|---|
-| **Now Playing** | M ▴ / L / Tall / Wide | Album art, title and artist, a scrubber, shuffle/repeat, and a picker when several apps are playing. It reads Windows' media transport controls (the same source as the Quick Settings media flyout), so it works with Spotify, Apple Music, browsers, VLC and others without per-app code. |
+| **Now Playing** | M ▴ / L / Tall / Wide | Album art, title, artist and album (centred in the large and tall sizes), a scrubber, shuffle/repeat, and a picker when several apps are playing. It reads Windows' media transport controls (the same source as the Quick Settings media flyout), so it works with Spotify, Apple Music, browsers, VLC and others without per-app code. |
 | **Volume Mixer** | S ▴ / M ▴ / L / Banner / Wide | Output and mic volume at a glance; its drawer has a slider for each app with its real Windows icon. The output device's name opens the device switcher. |
-| **Deck** | S / M / L / Wide / XL | Stream Deck–style keys. They can launch apps and URIs, send hotkeys, type text, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). Edit them on the iPad or in `deck.json`. |
+| **Deck** | S / M / L / Wide / XL | Stream Deck–style keys, each a module on the board's own grid (twelve keys in an XL deck sit one per cell). They can launch apps and URIs, send hotkeys, type text, switch virtual desktops, call any host action, or run multi-step sequences. Keys can light up from live state (for example, when the mic is muted). Edit them on the iPad or in `deck.json`. |
 | **System** | S ▴ / M ▴ / L | CPU ring, memory, battery and uptime, plus Lock / Sleep / Screen off. Its drawer adds disks and the busiest apps, measured only while it is open. |
 | **Calendar** | S ▴ / M ▴ / L ▴ | What's next on the calendars set up on the iPad. Its drawer shows the week ahead. Works without the PC. |
 | **Reminders** | S ▴ / M ▴ / L ▴ | Open reminders from the iPad, with a tap to tick one off. Its drawer has the full list. Works without the PC. |
-| **Clock** | S / M / L | Large, light numerals. Runs on the iPad only. It's also the smallest example panel. |
+| **Clock** | S / M / L | Large, light numerals, 12- or 24-hour. Runs on the iPad only. It's also the smallest example panel. |
+| **Desktops** | S / M / Banner | Windows' virtual desktops by name, the one on screen lit; tap one to go there. Works even when a full-screen remote desktop (Omnissa Horizon, RDP) has the keyboard. |
 
 **▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a card slides up from the bottom of the screen with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
 
 Calendar and Reminders read the iPad's own accounts through EventKit, so iOS asks for access the first time each is shown.
 
-You can set up any number of **boards**; each is a tab in the tab bar (like Stream Deck profiles). A board fills the screen: 6 × 4 cells in landscape, 4 × 6 in portrait (4 × 7 if you add a seventh row), and it scrolls only if you add more than that. The toolbar holds **Add widgets** (+), **Customize** (pencil) and a **⋯** menu for renaming, reordering, adding and deleting boards. The PC's name on the left opens its connection menu. While customizing, modules jiggle as on the Home Screen: tap **−** to remove one, **⋯** for its size and options (e.g. which deck page to show), or drag to reorder.
+You can set up any number of **boards**; each is a tab in the tab bar (like Stream Deck profiles). A board fills the screen: 6 × 4 cells in landscape, 4 × 6 in portrait (4 × 7 if you add a seventh row), and it scrolls only if you add more than that. The toolbar holds **Add widgets** (+), **Customize** (pencil) and a **⋯** menu for renaming, reordering, adding and deleting boards, and **Settings**. The PC's name on the left opens its connection menu, where you can rename it, switch PCs or forget it. While customizing, modules jiggle as on the Home Screen: tap **−** to remove one, **⋯** for its size and options (e.g. which deck page to show), or drag to reorder.
 
 ## Quick start
 
@@ -90,6 +91,17 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 | `-FluentDeckBoard N` | open board N (0-based) |
 | `-FluentDeckDemoPlanner YES` | stand-in calendar events and reminders; iOS isn't asked for access |
 
+## Settings
+
+**⋯ → Settings…** holds:
+
+- **This PC**: the name this iPad uses for the PC (the PC keeps its own), its address, and Switch PC.
+- **Background**: the colours of whatever is playing, or one colour from swatches or a colour picker.
+- **Accent color**: swatches of the iOS system colours or any colour; buttons, switches, gauges and the selected tab follow it.
+- **Deck**: show or hide key names, light keys white or in the accent colour, haptic feedback on key presses.
+- **Clock**: automatic, 12-hour or 24-hour.
+- **Keep screen awake** while connected.
+
 ## Editing the deck
 
 ### On the iPad
@@ -100,9 +112,11 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 For each key you set:
 
 - **Label**: the name under the key.
-- **When pressed**: open an app (picked from the PC's Start menu shortcuts, or a path or command you type), send a hotkey (modifier toggles plus a key, or several steps), open a link or app URI, type text, or use a built-in PC control such as play/pause, mute, lock or sleep.
+- **When pressed**: open an app (picked from the PC's Start menu shortcuts, or a path or command you type), send a hotkey (modifier toggles plus a key, or several steps), open a link or app URI, type text, use a built-in PC control such as play/pause, mute, lock or sleep, or switch to a virtual desktop (by name, or next/previous).
 - **Icon**: an SF Symbol, the app's own Windows icon, or a photo from the iPad that fills the key.
-- **Always lit**: fill the key with the accent.
+- **Always lit**: keep the key lit (white, or the accent colour if Settings says so).
+
+A desktop key lights up while its desktop is showing. Windows has no public way to switch desktops, so the PC presses Ctrl+Win+Left/Right as many times as needed, after bringing the taskbar to the front so a full-screen remote desktop client doesn't take the keys.
 
 The editor also moves and deletes keys. The **⋯** menu adds, renames and deletes pages. Multi-step keys keep their steps and can only be re-labelled and re-iconed here; change their steps in `deck.json`. Store apps have no Start menu shortcut file, so they are not in the app list: use a **Link** such as `spotify:` or type a command such as `wt.exe`.
 
@@ -191,7 +205,7 @@ Shared pieces live in `ipad/FluentDeck/Design/`: `PillButtonStyle`, `IconButton`
 
 ## Design notes
 
-- **Look:** iOS dark mode. The board is a Control Center-style grid: each widget sits on a translucent platter with large continuous corners, 14 pt apart, over a dark ground washed with the colours of the current cover art. Deck keys are circles that fill with the tint while on; sliders are capsules that fill from the left, with no thumb. Colours are the iOS dark system palette, mapped in `Design/Theme.swift`.
+- **Look:** iOS dark mode. The board is a Control Center-style grid: each widget sits on a translucent platter with large continuous corners, 14 pt apart, over a dark ground washed with the colours of the current cover art. Deck keys are modules too, laid on the same 14 pt rhythm, and light up white while on (as Control Center's toggles do), or in the accent colour if chosen; sliders are capsules that fill from the left, with no thumb. Colours are the iOS dark system palette, mapped in `Design/Theme.swift`.
 - **System components:** boards are a `TabView`, so the tab bar is whatever the iPad's OS draws (floating at the top on iPadOS 18 and later, at the bottom before). The toolbar, menus, sheets, segmented controls, switches and activity indicators are the system's too. Dialogs follow the iOS sheet layout: Cancel on the left, the main action on the right. Drawers are the one custom presentation: iPadOS centres its own sheets, so a drawer is a card that rises from the bottom edge, as tall as its content.
 - **Sizing for touch:** every control is at least 44 pt, sliders swell while you hold them, and deck keys respond to presses with scale and haptics.
 - **Grid:** `DashboardGrid` is a custom `Layout` that packs 1×1 to 4×3 tiles first-fit. `DashboardGrid.fit` sizes the cells so 6 × 4 of them fill the screen exactly in landscape, and 4 × 6 in portrait (4 × 7 once a board has a seventh row).

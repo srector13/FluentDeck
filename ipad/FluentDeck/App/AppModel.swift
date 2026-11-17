@@ -12,6 +12,7 @@ final class AppModel {
     let overlays = OverlayCenter()
     /// The iPad's own calendar and reminders.
     let planner = PlannerStore()
+    let settings = AppSettings()
 
     var editing = false
     /// The user chose "Switch PC…" — show the connect screen even though a PC is configured.
@@ -28,6 +29,7 @@ final class AppModel {
         let defaults = UserDefaults.standard
         keepAwake = defaults.object(forKey: "fluentdeck.keepAwake") as? Bool ?? true
         savedHosts = (defaults.data(forKey: "fluentdeck.hosts")).flatMap { try? JSONDecoder().decode([HostEndpoint].self, from: $0) } ?? []
+        connection.localName = { [settings] id in settings.pcName(for: id) }
 
         connection.onConnected = { [weak self] endpoint in
             guard let self else { return }
@@ -52,8 +54,8 @@ final class AppModel {
 
     // MARK: theme
 
-    /// iOS dark mode with the system blue tint.
-    var theme: Theme { .default }
+    /// iOS dark mode with the tint chosen in Settings.
+    var theme: Theme { settings.theme }
 
     // MARK: hosts
 
@@ -133,6 +135,15 @@ final class AppModel {
 
     func showWidgetPicker() {
         overlays.present(size: .page) { WidgetPicker() }
+    }
+
+    func showSettings() {
+        overlays.present(size: .page) { SettingsView() }
+    }
+
+    func promptRenamePC() {
+        guard let id = connection.hostId else { return }
+        overlays.present { RenamePCDialog(hostId: id) }
     }
 
     func promptRename(_ board: Board) {

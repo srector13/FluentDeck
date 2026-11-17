@@ -15,18 +15,18 @@ struct ClockPanel: View {
 
     @Environment(\.theme) private var theme
 
-    private static let uses12Hour = (DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current) ?? "").contains("a")
+    @Environment(AppSettings.self) private var settings
+
     /// "1:24" or "13:24": no leading zero on a 12-hour clock.
-    private static let time: DateFormatter = {
+    private static let time12: DateFormatter = formatter("h:mm")
+    private static let time24: DateFormatter = formatter("HH:mm")
+    private static let period: DateFormatter = formatter("a")
+
+    private static func formatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
-        formatter.dateFormat = ClockPanel.uses12Hour ? "h:mm" : "HH:mm"
+        formatter.dateFormat = format
         return formatter
-    }()
-    private static let period: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "a"
-        return formatter
-    }()
+    }
 
     var body: some View {
         TimelineView(.everyMinute) { timeline in
@@ -36,11 +36,11 @@ struct ClockPanel: View {
                 let size = max(34, min(g.size.height * 0.62, g.size.width * 0.3))
                 VStack(alignment: .leading, spacing: size * 0.04) {
                     HStack(alignment: .firstTextBaseline, spacing: size * 0.1) {
-                        Text(Self.time.string(from: date))
+                        Text((settings.uses24Hour ? Self.time24 : Self.time12).string(from: date))
                             .font(.system(size: size, weight: .semibold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(theme.textPrimary)
-                        if Self.uses12Hour {
+                        if !settings.uses24Hour {
                             Text(Self.period.string(from: date))
                                 .font(.system(size: max(13, size * 0.16)))
                                 .foregroundStyle(theme.textSecondary)

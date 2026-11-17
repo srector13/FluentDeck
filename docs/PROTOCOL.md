@@ -48,6 +48,7 @@ bursts to ~30 per second per topic.
 | `deck`   | `pages[{id,title,columns,buttons[{id,label,symbol,icon,iconFill,state{topic,path,equals},symbolOn,style,kind}]}], error, editable` | `press{buttonId} reload` and, when `editable`, the edit actions below |
 | `system` | `hostName, cpu, memory, memoryUsedGb, memoryTotalGb, battery{percent,charging}?, uptimeSeconds` | `lock sleep displayOff`, and `details` → `{disks[{name,freeGb,totalGb}], processes[{name,cpu,memoryMb}]}`, measured on request |
 | `theme`  | `isDark, accent, accentLight1..3, accentDark1..3` (hex `#RRGGBB`) | — |
+| `desktops` | `current, desktops[{index,name}]` (indexes count from 1; `current` is 0 if Windows doesn't say) | `switch{index} next previous` |
 
 ### Editing deck keys
 

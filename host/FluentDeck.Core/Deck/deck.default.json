@@ -11,6 +11,8 @@
 //    { "type": "text",    "text": "types this text" }
 //    { "type": "builtin", "panel": "audio", "action": "toggleMicMute", "args": { } }
 //    { "type": "sequence","steps": [ {action}, { "type": "delay", "ms": 250 }, {action} ] }
+//    { "type": "builtin", "panel": "desktops", "action": "switch", "args": { "index": 2 } }   (also "next" / "previous")
+//      add "state": { "topic": "desktops", "path": "current", "equals": 2 } to light it while that desktop shows
 {
   "pages": [
     {
@@ -68,7 +70,13 @@
           "action": { "type": "sequence", "steps": [
             { "type": "builtin", "panel": "media", "action": "pause" },
             { "type": "builtin", "panel": "audio", "action": "toggleMute" },
-            { "type": "keys", "keys": "Win+D" } ] } }
+            { "type": "keys", "keys": "Win+D" } ] } },
+        { "id": "desktop-1", "label": "Desktop 1", "symbol": "1.square",
+          "state": { "topic": "desktops", "path": "current", "equals": 1 },
+          "action": { "type": "builtin", "panel": "desktops", "action": "switch", "args": { "index": 1 } } },
+        { "id": "desktop-2", "label": "Desktop 2", "symbol": "2.square",
+          "state": { "topic": "desktops", "path": "current", "equals": 2 },
+          "action": { "type": "builtin", "panel": "desktops", "action": "switch", "args": { "index": 2 } } }
       ]
     }
   ]

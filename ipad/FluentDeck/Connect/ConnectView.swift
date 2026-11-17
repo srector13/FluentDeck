@@ -52,7 +52,7 @@ struct ConnectView: View {
                     ForEach(recent) { host in
                         HStack(spacing: 6) {
                             Button { app.connect(host) } label: {
-                                SettingsCard(symbol: "clock.arrow.circlepath", title: host.name, subtitle: "\(host.host):\(host.port)") { Chevron() }
+                                SettingsCard(symbol: "clock.arrow.circlepath", title: app.settings.pcName(for: host.hostId) ?? host.name, subtitle: "\(host.host):\(host.port)") { Chevron() }
                             }
                             .buttonStyle(CardButtonStyle())
                             ActionMenu(items: { [ActionItem.action("Forget", symbol: "trash", destructive: true) { app.forget(host) }] }) {

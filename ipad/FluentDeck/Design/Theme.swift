@@ -27,15 +27,34 @@ enum AppFont {
 }
 
 struct Theme: Equatable {
-    /// The tint: iOS system blue in dark mode.
-    var accent = Color(hex: "#0A84FF")
+    /// The tint, chosen in Settings; iOS system blue unless changed.
+    var accent: Color
+    /// Black on a light tint (yellow, mint), white on the rest.
+    var textOnAccent: Color
+
+    init(accentHex: String = "#0A84FF") {
+        accent = Color(hex: accentHex)
+        textOnAccent = Self.luminance(accentHex) > 0.6 ? .black : .white
+    }
 
     static let `default` = Theme()
 
     private static func white(_ a: Double) -> Color { Color(white: 1, opacity: a) }
 
+    /// Relative luminance of "#RRGGBB", 0…1.
+    static func luminance(_ hex: String) -> Double {
+        var s = hex.trimmingCharacters(in: .whitespaces)
+        if s.hasPrefix("#") { s.removeFirst() }
+        var v: UInt64 = 0
+        Scanner(string: s).scanHexInt64(&v)
+        func linear(_ c: UInt64) -> Double {
+            let x = Double(c & 0xFF) / 255
+            return x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(v >> 16) + 0.7152 * linear(v >> 8) + 0.0722 * linear(v)
+    }
+
     var accentPressed: Color { accent.opacity(0.75) }
-    var textOnAccent: Color { .white }
 
     // Labels (iOS label, secondaryLabel, tertiaryLabel, quaternaryLabel)
     var textPrimary: Color { .white }

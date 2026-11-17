@@ -31,7 +31,12 @@ final class HostConnection {
 
     private(set) var phase: Phase = .idle
     private(set) var endpoint: HostEndpoint?
-    private(set) var hostName = ""
+    /// The name the PC gives itself.
+    private(set) var reportedName = ""
+    /// The name this iPad calls a PC by, if the user renamed it (looked up by host id).
+    @ObservationIgnored var localName: (@MainActor (String?) -> String?)?
+    /// What to call the PC on screen.
+    var hostName: String { localName?(hostId) ?? reportedName }
     private(set) var hostId: String?
     private(set) var panels: [PanelDescriptor] = []
     /// Last action error, shown briefly as an Banner toast.
@@ -64,7 +69,7 @@ final class HostConnection {
     func connect(to endpoint: HostEndpoint) {
         disconnect()
         self.endpoint = endpoint
-        hostName = endpoint.name
+        reportedName = endpoint.name
         hostId = endpoint.hostId
         wantConnection = true
         everConnected = false
@@ -162,7 +167,7 @@ final class HostConnection {
         switch type {
         case "server":
             if let id = msg["hostId"]?.string { hostId = id }
-            if let name = msg["name"]?.string { hostName = name }
+            if let name = msg["name"]?.string { reportedName = name }
             if let token {
                 sentToken = true
                 send(["type": "hello", "token": .string(token), "client": clientInfo])
@@ -191,7 +196,7 @@ final class HostConnection {
 
         case "welcome":
             if let list = try? msg["panels"]?.decode([PanelDescriptor].self) { panels = list }
-            if let name = msg["name"]?.string { hostName = name }
+            if let name = msg["name"]?.string { reportedName = name }
             everConnected = true
             attempt = 0
             phase = .connected
@@ -199,7 +204,7 @@ final class HostConnection {
             startHeartbeat()
             if var ep = endpoint {
                 ep.hostId = hostId
-                ep.name = hostName
+                ep.name = reportedName
                 endpoint = ep
                 onConnected?(ep)
             }

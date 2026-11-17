@@ -15,6 +15,9 @@ public static class BuiltInPanels
         ["lock", "sleep", "displayOff", "details"]);
 
     public static readonly PanelDescriptor Theme = new("theme", "Theme", "paintpalette", 1, []);
+
+    public static readonly PanelDescriptor Desktops = new("desktops", "Desktops", "rectangle.split.3x1", 1,
+        ["switch", "next", "previous"]);
 }
 
 public sealed record MediaSource(string AppId, string Name);
@@ -68,6 +71,13 @@ public sealed record SystemState(
     double MemoryTotalGb,
     BatteryState? Battery,
     long UptimeSeconds);
+
+/// <summary>One of Windows' virtual desktops. <paramref name="Index"/> counts from 1, left to right.</summary>
+public sealed record DesktopInfo(int Index, string Name);
+
+/// <summary>The virtual desktops and which one is showing (<paramref name="Current"/> counts from 1;
+/// 0 when Windows doesn't say).</summary>
+public sealed record DesktopsState(int Current, IReadOnlyList<DesktopInfo> Desktops);
 
 public sealed record ThemeState(
     bool IsDark,

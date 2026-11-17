@@ -68,6 +68,32 @@ struct IconButton: View {
     }
 }
 
+// MARK: - Module
+
+/// The surface of a module on the board: translucent material with a faint white lift, as in
+/// Control Center. Widgets sit on one; so does each deck key.
+struct ModuleSurface: View {
+    var radius: CGFloat = Metrics.panelRadius
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        ZStack {
+            shape.fill(.ultraThinMaterial)
+            shape.fill(theme.controlFillTertiary)
+        }
+    }
+}
+
+extension View {
+    /// Put content on a module surface, padded as a widget is.
+    func module() -> some View {
+        padding(Metrics.cardPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { ModuleSurface() }
+    }
+}
+
 // MARK: - Grouped cell
 
 /// An opaque rounded cell, as in an iOS grouped list.

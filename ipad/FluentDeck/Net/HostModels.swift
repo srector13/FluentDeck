@@ -95,6 +95,18 @@ struct BatteryState: Codable, Equatable {
     var charging: Bool
 }
 
+/// Windows' virtual desktops. `current` and each `index` count from 1; `current` is 0 when the PC
+/// can't tell.
+struct DesktopsState: Codable, Equatable {
+    struct Desktop: Codable, Equatable, Identifiable {
+        var index: Int
+        var name: String
+        var id: Int { index }
+    }
+    var current: Int
+    var desktops: [Desktop]
+}
+
 struct SystemState: Codable, Equatable {
     var hostName: String
     var cpu: Double

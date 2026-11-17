@@ -22,9 +22,8 @@ struct NowPlayingPanel: View {
         if let m = ctx.state("media", as: MediaState.self), m.hasSession {
             switch ctx.size {
             case .medium: medium(m)
-            case .tall: tall(m)
             case .wide: wide(m)
-            default: large(m)
+            default: centered(m)
             }
         } else {
             VStack(spacing: 12) {
@@ -34,46 +33,33 @@ struct NowPlayingPanel: View {
         }
     }
 
-    private func large(_ m: MediaState) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 14) {
-                Artwork(path: m.artwork).frame(width: 96, height: 96)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(m.title ?? "Unknown title").font(AppFont.bodyLarge.weight(.semibold)).lineLimit(2)
-                    Text(m.artist ?? "").font(AppFont.body).foregroundStyle(theme.textSecondary).lineLimit(1)
-                    SourcePicker(ctx: ctx, media: m).padding(.top, 4)
-                }
-                .foregroundStyle(theme.textPrimary)
-            }
-            Spacer(minLength: 0)
-            Scrubber(ctx: ctx, media: m)
-            TransportRow(ctx: ctx, media: m, prominent: true)
-        }
-    }
-
-    /// Control Center's media module, stood upright: source, cover, title, scrubber, transport.
-    private func tall(_ m: MediaState) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+    /// Large and tall: everything on the centre line — source, cover, title, artist and album,
+    /// scrubber and transport — like a record sleeve.
+    private func centered(_ m: MediaState) -> some View {
+        VStack(spacing: 0) {
             SourcePicker(ctx: ctx, media: m)
             Artwork(path: m.artwork, radius: Metrics.artRadius)
                 .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(.top, 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 10)
             Text(m.title ?? "Unknown title")
                 .font(AppFont.subtitle)
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.75)
                 .padding(.top, 14)
-            Text(m.artist ?? "")
+            Text([m.artist, m.album].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " — "))
                 .font(AppFont.body)
                 .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
                 .padding(.top, 2)
             Scrubber(ctx: ctx, media: m)
-                .padding(.top, 2)
+                .padding(.top, 8)
             TransportRow(ctx: ctx, media: m, prominent: true)
         }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
     }
 
     private func medium(_ m: MediaState) -> some View {

@@ -24,6 +24,8 @@ struct WidgetCard: View {
         spec.drawer != nil && available && !preview && (spec.drawerSizes?.contains(tile.size) ?? true)
     }
 
+    private var bare: Bool { spec.bare && available }
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Metrics.panelRadius, style: .continuous)
         VStack(spacing: 0) {
@@ -42,14 +44,15 @@ struct WidgetCard: View {
             }
         }
         .allowsHitTesting(!editing || spec.editsInPlace)
-        .padding([.horizontal, .top], Metrics.cardPadding)
-        .padding(.bottom, hasDrawer ? 4 : Metrics.cardPadding)
+        .padding([.horizontal, .top], bare ? 0 : Metrics.cardPadding)
+        .padding(.bottom, bare ? 0 : hasDrawer ? 4 : Metrics.cardPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
-            ZStack {
-                shape.fill(.ultraThinMaterial)
-                shape.fill(theme.controlFillTertiary)
-                if let background = spec.background, available { background(ctx).clipShape(shape) }
+            if !bare {
+                ZStack {
+                    ModuleSurface()
+                    if let background = spec.background, available { background(ctx).clipShape(shape) }
+                }
             }
         }
         .contentShape(shape)

@@ -15,6 +15,11 @@ internal static partial class Native
     public const uint WM_SYSCOMMAND = 0x0112;
     public const int SC_MONITORPOWER = 0xF170;
 
+    // ── windows ──
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string? className, string? windowName);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+
     // ── stats ──
     [DllImport("kernel32.dll", SetLastError = true)] public static extern bool GetSystemTimes(out long idle, out long kernel, out long user);
 

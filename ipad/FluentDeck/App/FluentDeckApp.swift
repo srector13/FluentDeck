@@ -17,6 +17,7 @@ struct FluentDeckApp: App {
                 .environment(app.connection)
                 .environment(app.overlays)
                 .environment(app.planner)
+                .environment(app.settings)
         }
         .onChange(of: scenePhase) { _, phase in app.scenePhaseChanged(phase) }
     }
@@ -72,27 +73,38 @@ extension View {
             .environment(app.connection)
             .environment(app.overlays)
             .environment(app.planner)
+            .environment(app.settings)
             .environment(\.theme, theme)
             .preferredColorScheme(.dark)
             .tint(theme.accent)
     }
 }
 
-/// The ground the board sits on: black, washed with the colours of whatever is playing, the way
-/// Control Center sits on a blurred wallpaper. The modules' translucent platters pick it up.
+/// The ground the board sits on, as chosen in Settings: black washed with the colours of whatever
+/// is playing (the way Control Center sits on a blurred wallpaper), or one colour with a soft fall
+/// of light from the top. The modules' translucent platters pick it up either way.
 struct AmbientBackground: View {
     @Environment(HostConnection.self) private var connection
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
-        let media = connection.store.box("media").decoded(MediaState.self)
         ZStack {
-            LinearGradient(colors: [Color(hex: "#1A1D29"), Color(hex: "#08080A")], startPoint: .topLeading, endPoint: .bottomTrailing)
-            RemoteImage(path: media?.hasSession == true ? media?.artwork : nil)
-                .blur(radius: 110)
-                .saturation(1.5)
-                .opacity(0.55)
-            Color.black.opacity(0.25)
+            switch settings.backdrop {
+            case .artwork:
+                let media = connection.store.box("media").decoded(MediaState.self)
+                LinearGradient(colors: [Color(hex: "#1A1D29"), Color(hex: "#08080A")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                RemoteImage(path: media?.hasSession == true ? media?.artwork : nil)
+                    .blur(radius: 110)
+                    .saturation(1.5)
+                    .opacity(0.55)
+                Color.black.opacity(0.25)
+            case .color:
+                let color = Color(hex: settings.backdropHex)
+                color
+                LinearGradient(colors: [.white.opacity(0.06), .black.opacity(0.28)], startPoint: .top, endPoint: .bottom)
+            }
         }
+        .animation(.easeInOut(duration: 0.4), value: settings.backdrop)
         .ignoresSafeArea()
         .allowsHitTesting(false)
     }

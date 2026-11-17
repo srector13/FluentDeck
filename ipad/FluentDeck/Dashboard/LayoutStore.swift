@@ -43,7 +43,7 @@ final class LayoutStore {
                 TileInstance(kind: DeckPanel.spec.kind, size: .huge, config: ["page": "dev"]),
                 TileInstance(kind: VolumeMixerPanel.spec.kind, size: .large),
                 TileInstance(kind: NowPlayingPanel.spec.kind, size: .medium),
-                TileInstance(kind: ClockPanel.spec.kind, size: .medium),
+                TileInstance(kind: DesktopsPanel.spec.kind, size: .medium),
                 TileInstance(kind: RemindersPanel.spec.kind, size: .medium),
                 TileInstance(kind: SystemPanel.spec.kind, size: .medium),
             ], symbol: "hammer.fill")
