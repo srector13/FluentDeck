@@ -71,7 +71,7 @@ enum DeckEditing {
 
 /// What pressing a key does, as the editor groups it.
 enum DeckKeyKind: String, CaseIterable, Identifiable {
-    case app, hotkey, link, text, control, desktop
+    case app, focus, hotkey, link, text, control, desktop
     /// A sequence or an action this editor has no form for. It is kept as it is.
     case other
 
@@ -80,6 +80,7 @@ enum DeckKeyKind: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .app: return "Open app"
+        case .focus: return "Switch to app"
         case .hotkey: return "Hotkey"
         case .link: return "Link"
         case .text: return "Type text"
@@ -273,6 +274,8 @@ struct DeckKeyEditor: View {
     @State private var text = ""
     @State private var controlID: String?
     @State private var desktop: DeckDesktopTarget?
+    @State private var focusApp: RunningApp?
+    @State private var focusLaunches = true
     @State private var accent = false
 
     @State private var symbol = "app"
@@ -364,7 +367,9 @@ struct DeckKeyEditor: View {
 
     /// Kinds the user can pick. "Custom" only appears for a key that already is one.
     private var kinds: [DeckKeyKind] {
-        var list: [DeckKeyKind] = [.app, .hotkey, .link, .text]
+        var list: [DeckKeyKind] = [.app]
+        if ctx.connection.hostProvides("apps") { list.append(.focus) }
+        list += [.hotkey, .link, .text]
         if !presets.isEmpty { list.append(.control) }
         if ctx.connection.hostProvides("desktops") { list.append(.desktop) }
         if originalKind == .other { list.append(.other) }
@@ -396,6 +401,7 @@ struct DeckKeyEditor: View {
     private var actionFields: some View {
         switch kind {
         case .app: appFields
+        case .focus: focusFields
         case .hotkey: hotkeyFields
         case .link:
             TextBox(placeholder: "https://… or an app link such as spotify:", text: $link, keyboard: .URL)
@@ -468,6 +474,55 @@ struct DeckKeyEditor: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    /// Apps open on the PC now. The key brings the chosen one to the front (and to its desktop),
+    /// lights up while it's in front, and can start it if it isn't open.
+    private var focusFields: some View {
+        let running = ctx.connection.store.box("apps").decoded(AppsState.self)?.running ?? []
+        let rows = running + (focusApp.map { app in running.contains { $0.exe == app.exe } ? [] : [app] } ?? [])
+        return VStack(alignment: .leading, spacing: 8) {
+            if rows.isEmpty {
+                note("No apps are open on the PC. Open the app there, then choose it here.")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 2) {
+                        ForEach(rows) { app in
+                            Button { choose(app) } label: {
+                                HStack(spacing: 12) {
+                                    Group {
+                                        if let icon = app.icon {
+                                            RemoteImage(path: icon, contentMode: .fit) { Image(systemName: "app") }
+                                        } else {
+                                            Image(systemName: "app.dashed").font(.system(size: 18))
+                                        }
+                                    }
+                                    .frame(width: 26, height: 26)
+                                    Text(app.name).font(AppFont.body)
+                                    Spacer(minLength: 0)
+                                    if app.exe == focusApp?.exe {
+                                        Image(systemName: "checkmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(theme.accent)
+                                    }
+                                }
+                                .foregroundStyle(theme.textPrimary)
+                                .padding(.horizontal, 10)
+                                .frame(height: 44)
+                                .background(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
+                                    .fill(app.exe == focusApp?.exe ? theme.controlFill : Color.clear))
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(app.name)
+                        }
+                    }
+                }
+                .frame(height: min(CGFloat(rows.count) * 46, 230))
+            }
+            Toggle("Open it if it isn't running", isOn: $focusLaunches)
+                .font(AppFont.body)
+                .foregroundStyle(theme.textPrimary)
+            note("Brings the app's window to the front, on whichever desktop it's on, and lights the key while the app is in front.")
         }
     }
 
@@ -561,6 +616,23 @@ struct DeckKeyEditor: View {
         if label.trimmingCharacters(in: .whitespaces).isEmpty { label = preset.title }
     }
 
+    /// "C:\\…\\Code.exe" → "code.exe", as the PC names apps.
+    static func exe(_ path: String) -> String {
+        (path.split(whereSeparator: { $0 == "\\" || $0 == "/" }).last.map(String.init) ?? path).lowercased()
+    }
+
+    private func choose(_ app: RunningApp) {
+        let previousName = focusApp?.name
+        focusApp = app
+        if let path = app.path {
+            icon = path
+            iconAsset = app.icon
+            useImage = app.icon != nil
+        }
+        let current = label.trimmingCharacters(in: .whitespaces)
+        if current.isEmpty || current == previousName { label = app.name }
+    }
+
     private func choose(_ target: DeckDesktopTarget, _ desktops: [DesktopsState.Desktop]) {
         let previousTitle = desktop?.title(desktops)
         desktop = target
@@ -608,6 +680,13 @@ struct DeckKeyEditor: View {
 
         let action = key.action
         switch action?["type"]?.string ?? "" {
+        case "focus":
+            kind = .focus
+            let path = action?["target"]?.string ?? ""
+            let exe = Self.exe(path)
+            let running = ctx.connection.store.box("apps").decoded(AppsState.self)?.running.first { $0.exe == exe }
+            focusApp = running ?? RunningApp(exe: exe, name: key.label.isEmpty ? exe : key.label, path: path, icon: info.iconAsset)
+            if case .bool(let launch)? = action?["launch"] { focusLaunches = launch } else { focusLaunches = true }
         case "launch", "":
             kind = .app
             target = action?["target"]?.string ?? ""
@@ -680,6 +759,16 @@ struct DeckKeyEditor: View {
             key.action = .object(["type": "builtin", "panel": .string(preset.panel), "action": .string(preset.action)])
             key.state = preset.state
             key.symbolOn = preset.symbolOn
+        case .focus:
+            guard let focusApp, let path = focusApp.path, !path.isEmpty else {
+                problem = "Choose the app the key should bring to the front."
+                return nil
+            }
+            var fields: [String: JSON] = ["type": "focus", "target": .string(path)]
+            if !focusLaunches { fields["launch"] = .bool(false) }
+            key.action = .object(fields)
+            key.state = DeckBinding(topic: "apps", path: "foreground.exe", equals: .string(focusApp.exe))
+            key.symbolOn = nil
         case .desktop:
             guard let desktop else {
                 problem = "Choose which desktop the key should show."

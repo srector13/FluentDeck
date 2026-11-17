@@ -26,13 +26,19 @@
 | **Calendar** | S ▴ / M ▴ / L ▴ | What's next on the calendars set up on the iPad. Its drawer shows the week ahead. Works without the PC. |
 | **Reminders** | S ▴ / M ▴ / L ▴ | Open reminders from the iPad, with a tap to tick one off. Its drawer has the full list. Works without the PC. |
 | **Clock** | S / M / L | Large, light numerals, 12- or 24-hour. Runs on the iPad only. It's also the smallest example panel. |
+| **Timer** | S / M / L | A countdown with quick lengths and a Pomodoro mode (25 minutes of focus, then a 5-minute break). Chimes when time's up. Runs on the iPad. |
+| **Weather** | S / M / L / Wide | Conditions now, today's high and low, and the days ahead, for a place you search for or where the iPad is. Forecasts from [Open-Meteo](https://open-meteo.com) (free, no account); the place is sent to it. Runs on the iPad. |
+| **Network & Disks** | S / M / L / Wide | The PC's download and upload speed with the last minute as a graph, and free space on its disks. |
+| **Clipboard** | S / M / L | Send text copied on the iPad to the PC, paste it straight into the app in front, or copy the PC's clipboard to the iPad. iOS asks "Allow Paste" when the iPad's clipboard is read, unless you allow it in Settings › FluentDeck. |
 | **Desktops** | S / M / Banner | Windows' virtual desktops by name, the one on screen lit; tap one to go there. Works even when a full-screen remote desktop (Omnissa Horizon, RDP) has the keyboard. |
 
 **▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a card slides up from the bottom of the screen with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
 
 Calendar and Reminders read the iPad's own accounts through EventKit, so iOS asks for access the first time each is shown.
 
-You can set up any number of **boards**; each is a tab in the tab bar (like Stream Deck profiles). A board fills the screen: 6 × 4 cells in landscape, 4 × 6 in portrait (4 × 7 if you add a seventh row), and it scrolls only if you add more than that. The toolbar holds **Add widgets** (+), **Customize** (pencil) and a **⋯** menu for renaming, reordering, adding and deleting boards, and **Settings**. The PC's name on the left opens its connection menu, where you can rename it, switch PCs or forget it. While customizing, modules jiggle as on the Home Screen: tap **−** to remove one, **⋯** for its size and options (e.g. which deck page to show), or drag to reorder.
+You can set up any number of **boards**; each is a tab in the tab bar (like Stream Deck profiles). A board fills the screen: 6 × 4 cells in landscape, 4 × 6 in portrait (4 × 7 if you add a seventh row), and it scrolls only if you add more than that. The toolbar holds **Add widgets** (+), **Customize** (pencil) and a **⋯** menu for renaming, reordering, adding and deleting boards, and **Settings**. The PC's name on the left opens its connection menu, where you can rename it, switch PCs or forget it.
+
+**Boards that follow the PC.** In a board's **⋯ → Show for Apps…**, pick apps from those open on the PC. When one of them comes to the front, the iPad shows that board; leave the app and it goes back to the board you were on. Choosing a tab yourself stays put. Turn it off in Settings › Boards. While customizing, modules jiggle as on the Home Screen: tap **−** to remove one, **⋯** for its size and options (e.g. which deck page to show), or drag to reorder.
 
 ## Quick start
 
@@ -100,6 +106,7 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 - **Accent color**: swatches of the iOS system colours or any colour; buttons, switches, gauges and the selected tab follow it.
 - **Deck**: show or hide key names, light keys white or in the accent colour, haptic feedback on key presses.
 - **Clock**: automatic, 12-hour or 24-hour.
+- **Boards**: switch boards with the app in front on the PC.
 - **Keep screen awake** while connected.
 
 ## Editing the deck
@@ -112,7 +119,7 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 For each key you set:
 
 - **Label**: the name under the key.
-- **When pressed**: open an app (picked from the PC's Start menu shortcuts, or a path or command you type), send a hotkey (modifier toggles plus a key, or several steps), open a link or app URI, type text, use a built-in PC control such as play/pause, mute, lock or sleep, or switch to a virtual desktop (by name, or next/previous).
+- **When pressed**: open an app (picked from the PC's Start menu shortcuts, or a path or command you type), send a hotkey (modifier toggles plus a key, or several steps), open a link or app URI, type text, use a built-in PC control such as play/pause, mute, lock or sleep, or switch to a virtual desktop (by name, or next/previous), or switch to an app: bring an app that's open on the PC to the front, on whichever desktop it's on, and start it if it isn't running. A switch-to-app key lights up while its app is in front.
 - **Icon**: an SF Symbol, the app's own Windows icon, or a photo from the iPad that fills the key.
 - **Always lit**: keep the key lit (white, or the accent colour if Settings says so).
 

@@ -23,6 +23,24 @@ internal sealed class WindowsDeckExecutor : IDeckActionExecutor
                     WindowStyle = action.Hidden ? ProcessWindowStyle.Hidden : ProcessWindowStyle.Normal,
                 });
                 break;
+            case "focus":
+            {
+                var path = ResolvePath(action.Target ?? throw new PanelActionException("focus needs \"target\""));
+                var window = WindowFocus.Find(Path.GetFileName(path));
+                if (window != IntPtr.Zero)
+                {
+                    if (!WindowFocus.Bring(window)) throw new PanelActionException("Windows wouldn't bring that app to the front.");
+                }
+                else if (action.Launch != false)
+                {
+                    Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                }
+                else
+                {
+                    throw new PanelActionException($"{Path.GetFileNameWithoutExtension(path)} isn't open on the PC.");
+                }
+                break;
+            }
             case "url":
                 Start(new ProcessStartInfo(action.Target ?? throw new PanelActionException("url needs \"target\"")) { UseShellExecute = true });
                 break;

@@ -9,7 +9,7 @@ import Foundation
 /// | `-FluentDeckConnect host[:port]` | connect to this PC at launch (e.g. the DevHost on 127.0.0.1) |
 /// | `-FluentDeckPairCode 123456` | answer the pairing prompt with this code |
 /// | `-FluentDeckBoard N` | open board N (0-based) |
-/// | `-FluentDeckDemoPlanner YES` | stand-in calendar events and reminders; iOS isn't asked for access |
+/// | `-FluentDeckDemoPlanner YES` | stand-in calendar events, reminders and weather; iOS isn't asked for access and nothing is fetched |
 enum LaunchOptions {
     private static var args: UserDefaults { .standard }
 
@@ -38,6 +38,9 @@ enum LaunchOptions {
             hosts.compactMap(\.hostId).forEach(Keychain.deleteToken(for:))
         }
         for key in ["fluentdeck.hosts", LayoutStore.storageKey, "fluentdeck.keepAwake"] {
+            defaults.removeObject(forKey: key)
+        }
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("fluentdeck.settings.") {
             defaults.removeObject(forKey: key)
         }
     }

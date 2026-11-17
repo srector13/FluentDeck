@@ -139,6 +139,42 @@ final class ScreenshotTests: XCTestCase {
 
         // 18. The Dev board on the solid colour, with the Desktops widget.
         shot("18-dev-board-color")
+
+        // 19. The Desk board: a running timer, weather (stand-in data), network, clipboard.
+        launch(app, connected(board: 2), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        app.buttons["Start"].firstMatch.tap()
+        sleep(3)
+        shot("19-desk-board")
+
+        // 20. Choosing the apps that bring the Desk board up.
+        app.buttons["More"].firstMatch.tap()
+        let showFor = app.buttons["Show for Apps…"].firstMatch
+        XCTAssertTrue(showFor.waitForExistence(timeout: 10), "More menu has no Show for Apps")
+        showFor.tap()
+        let horizon = app.buttons["Omnissa Horizon Client"].firstMatch
+        XCTAssertTrue(horizon.waitForExistence(timeout: 10), "Running apps did not load")
+        horizon.tap()
+        sleep(1)
+        shot("20-board-apps")
+        app.buttons["Cancel"].firstMatch.tap()
+        waitUntilGone(horizon)
+
+        // 21. A key that brings an app to the front.
+        launch(app, connected(board: 1), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        app.buttons["Customize"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 10))
+        app.buttons["Desktop 1"].firstMatch.tap()
+        XCTAssertTrue(editorTitle.waitForExistence(timeout: 15), "Key editor did not open")
+        app.buttons["Switch to app"].firstMatch.tap()
+        let horizonRow = app.buttons["Omnissa Horizon Client"].firstMatch
+        XCTAssertTrue(horizonRow.waitForExistence(timeout: 10), "Open apps did not load in the editor")
+        horizonRow.tap()
+        sleep(2)
+        shot("21-key-editor-switch-app")
+        app.buttons["Cancel"].firstMatch.tap()
+        waitUntilGone(editorTitle)
     }
 
     // MARK: helpers

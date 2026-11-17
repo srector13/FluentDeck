@@ -26,6 +26,8 @@ final class AppSettings {
     var keyLabels: Bool { didSet { save("keyLabels", keyLabels) } }
     /// Lit keys fill with the accent colour instead of white.
     var litKeysUseAccent: Bool { didSet { save("litKeysUseAccent", litKeysUseAccent) } }
+    /// Bring up a board when one of its apps comes to the front on the PC.
+    var autoSwitchBoards: Bool { didSet { save("autoSwitchBoards", autoSwitchBoards) } }
     /// A tap of feedback when a key is pressed.
     var haptics: Bool { didSet { save("haptics", haptics) } }
     /// nil follows the iPad's region; true and false force 24- or 12-hour time.
@@ -44,6 +46,7 @@ final class AppSettings {
         keyLabels = value("keyLabels") ?? true
         haptics = value("haptics") ?? true
         litKeysUseAccent = value("litKeysUseAccent") ?? false
+        autoSwitchBoards = value("autoSwitchBoards") ?? true
         clock24Hour = value("clock24Hour")
         pcNames = value("pcNames") ?? [:]
     }

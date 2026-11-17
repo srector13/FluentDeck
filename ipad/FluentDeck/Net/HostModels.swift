@@ -107,6 +107,37 @@ struct DesktopsState: Codable, Equatable {
     var desktops: [Desktop]
 }
 
+/// An app with a window open on the PC. `exe` is the lower-case file name boards and keys match on.
+struct RunningApp: Codable, Equatable, Identifiable, Hashable {
+    var exe: String
+    var name: String
+    var path: String?
+    var icon: String?
+    var id: String { exe }
+}
+
+struct AppsState: Codable, Equatable {
+    var foreground: RunningApp?
+    var running: [RunningApp]
+}
+
+/// The PC's main connection in bytes per second, with the last minute of samples, and its disks.
+struct NetworkState: Codable, Equatable {
+    struct Disk: Codable, Equatable, Identifiable {
+        var name: String
+        var freeGb: Double
+        var totalGb: Double
+        var id: String { name }
+    }
+    var adapter: String?
+    var address: String?
+    var downBps: Double
+    var upBps: Double
+    var downHistory: [Double]
+    var upHistory: [Double]
+    var disks: [Disk]
+}
+
 struct SystemState: Codable, Equatable {
     var hostName: String
     var cpu: Double

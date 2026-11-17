@@ -17,7 +17,7 @@ public sealed class DeckPanel : PanelProvider, IDisposable
 {
     private static readonly string[] EditActions =
         ["getButton", "saveButton", "deleteButton", "moveButton", "addPage", "renamePage", "deletePage", "listApps", "uploadIcon"];
-    private static readonly HashSet<string> ActionTypes = ["launch", "url", "keys", "text", "builtin", "sequence", "delay"];
+    private static readonly HashSet<string> ActionTypes = ["launch", "focus", "url", "keys", "text", "builtin", "sequence", "delay"];
     private const int MaxIconBytes = 180_000; // fits one WebSocket message as base64
 
     private readonly HostPaths _paths;
@@ -149,7 +149,7 @@ public sealed class DeckPanel : PanelProvider, IDisposable
             case "delay":
                 await Task.Delay(Math.Clamp(action.Ms ?? 100, 0, 10_000), ct);
                 break;
-            case "launch" or "url" or "keys" or "text":
+            case "launch" or "focus" or "url" or "keys" or "text":
                 await _executor.ExecuteAsync(action, ct);
                 break;
             default:
@@ -289,7 +289,7 @@ public sealed class DeckPanel : PanelProvider, IDisposable
         if (!ActionTypes.Contains(a.Type)) throw new PanelActionException($"Unknown action type '{a.Type}'");
         switch (a.Type)
         {
-            case "launch" or "url":
+            case "launch" or "url" or "focus":
                 a.Target = Blank(a.Target) ?? throw new PanelActionException(a.Type == "url" ? "Enter a link to open." : "Choose an app or enter a path.");
                 break;
             case "keys":

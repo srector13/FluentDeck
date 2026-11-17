@@ -137,6 +137,38 @@ final class AppModel {
         overlays.present(size: .page) { WidgetPicker() }
     }
 
+    // MARK: boards that follow the PC
+
+    /// The board that was showing before an app brought another one up, to go back to.
+    private var boardBeforeApp: UUID?
+    /// The board an app brought up, while it is still the one showing.
+    private var boardFromApp: UUID?
+
+    /// The app in front on the PC changed: show the board set up for it, or go back to the board
+    /// that was showing before when it's gone. Choosing a tab by hand ends the round trip.
+    func foregroundAppChanged(_ exe: String?) {
+        guard settings.autoSwitchBoards, !editing, overlays.dialog == nil else { return }
+        let current = layout.selectedBoardID
+        if boardFromApp != nil, current != boardFromApp {
+            boardFromApp = nil
+            boardBeforeApp = nil
+        }
+        if let exe, let board = layout.boards.first(where: { $0.apps?.contains(exe) == true }) {
+            guard board.id != current else { return }
+            if boardFromApp == nil { boardBeforeApp = current }
+            boardFromApp = board.id
+            withAnimation(.snappy) { layout.selectedBoardID = board.id }
+        } else if let back = boardBeforeApp, current == boardFromApp, layout.boards.contains(where: { $0.id == back }) {
+            boardFromApp = nil
+            boardBeforeApp = nil
+            withAnimation(.snappy) { layout.selectedBoardID = back }
+        }
+    }
+
+    func promptBoardApps(_ board: Board) {
+        overlays.present(size: .page) { BoardAppsDialog(boardID: board.id) }
+    }
+
     func showSettings() {
         overlays.present(size: .page) { SettingsView() }
     }

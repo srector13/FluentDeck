@@ -53,6 +53,8 @@ targets:
         # The Calendar and Reminders widgets read the iPad's own data (EventKit).
         NSCalendarsFullAccessUsageDescription: FluentDeck shows your upcoming events on its Calendar widget.
         NSRemindersFullAccessUsageDescription: FluentDeck shows your reminders on its Reminders widget and lets you tick them off.
+        # The Weather widget can use where the iPad is, if you ask it to.
+        NSLocationWhenInUseUsageDescription: FluentDeck uses your location to show the weather where you are.
         NSBonjourServices:
           - _fluentdeck._tcp
         NSAppTransportSecurity:

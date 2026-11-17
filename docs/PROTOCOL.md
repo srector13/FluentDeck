@@ -48,6 +48,9 @@ bursts to ~30 per second per topic.
 | `deck`   | `pages[{id,title,columns,buttons[{id,label,symbol,icon,iconFill,state{topic,path,equals},symbolOn,style,kind}]}], error, editable` | `press{buttonId} reload` and, when `editable`, the edit actions below |
 | `system` | `hostName, cpu, memory, memoryUsedGb, memoryTotalGb, battery{percent,charging}?, uptimeSeconds` | `lock sleep displayOff`, and `details` → `{disks[{name,freeGb,totalGb}], processes[{name,cpu,memoryMb}]}`, measured on request |
 | `theme`  | `isDark, accent, accentLight1..3, accentDark1..3` (hex `#RRGGBB`) | — |
+| `apps` | `foreground{exe,name,path,icon}?, running[{exe,name,path,icon}]` (`exe` is the lower-case file name; no window titles are sent) | `focus{exe}` brings an open app to the front. Starting a program is only possible from a deck key (`"type": "focus"` in deck.json). |
+| `network` | `adapter, address, downBps, upBps, downHistory[60], upHistory[60], disks[{name,freeGb,totalGb}]` (bytes per second, oldest sample first) | — |
+| `clipboard` | `{}` (nothing is published; the clipboard is read only on request) | `setText{text, paste?}` (paste presses Ctrl+V after), `getText` → `{text}` |
 | `desktops` | `current, desktops[{index,name}]` (indexes count from 1; `current` is 0 if Windows doesn't say) | `switch{index} next previous` |
 
 ### Editing deck keys

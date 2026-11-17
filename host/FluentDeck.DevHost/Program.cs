@@ -28,6 +28,9 @@ builder.Services.AddPanel<SimAudioPanel>();
 builder.Services.AddPanel<SimSystemPanel>();
 builder.Services.AddPanel<SimThemePanel>();
 builder.Services.AddPanel<SimDesktopsPanel>();
+builder.Services.AddPanel<SimAppsPanel>();
+builder.Services.AddPanel<SimClipboardPanel>();
+builder.Services.AddPanel<NetworkPanel>(); // the DevHost machine's real traffic
 
 var app = builder.Build();
 app.MapFluentDeck();

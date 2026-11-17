@@ -78,7 +78,7 @@ public sealed class SystemDetails
 
     private static readonly string[] MountRoots = ["/Volumes/", "/mnt/", "/media/"];
 
-    private static List<DiskInfo> Disks()
+    public static List<DiskInfo> Disks()
     {
         var disks = new List<DiskInfo>();
         var seen = new HashSet<(long, long)>();

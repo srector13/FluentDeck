@@ -8,6 +8,8 @@ struct Board: Codable, Identifiable, Hashable {
     var tiles: [TileInstance]
     /// SF Symbol shown with the board's name in the tab bar.
     var symbol: String?
+    /// Apps on the PC (lower-case exe names) that bring this board up when they come to the front.
+    var apps: [String]?
 }
 
 /// Persists boards and widget placement in UserDefaults.
@@ -47,7 +49,18 @@ final class LayoutStore {
                 TileInstance(kind: RemindersPanel.spec.kind, size: .medium),
                 TileInstance(kind: SystemPanel.spec.kind, size: .medium),
             ], symbol: "hammer.fill")
-            boards = [home, dev]
+            let desk = Board(name: "Desk", tiles: [
+                TileInstance(kind: TimerPanel.spec.kind, size: .large, config: ["minutes": "25"]),
+                TileInstance(kind: WeatherPanel.spec.kind, size: .large),
+                TileInstance(kind: NetworkPanel.spec.kind, size: .large),
+                TileInstance(kind: ClipboardPanel.spec.kind, size: .medium),
+                TileInstance(kind: DesktopsPanel.spec.kind, size: .medium),
+                TileInstance(kind: ClockPanel.spec.kind, size: .medium),
+                TileInstance(kind: RemindersPanel.spec.kind, size: .medium),
+                TileInstance(kind: CalendarPanel.spec.kind, size: .medium),
+                TileInstance(kind: SystemPanel.spec.kind, size: .medium),
+            ], symbol: "sun.max.fill")
+            boards = [home, dev, desk]
             selectedBoardID = home.id
         }
     }
@@ -89,9 +102,15 @@ final class LayoutStore {
         boards[b].tiles.insert(item, at: to)
     }
 
+    /// Change a tile wherever it is: a widget on a board that isn't showing can still update
+    /// itself (a timer running out, say).
     private func mutate(_ tile: UUID, _ change: (inout TileInstance) -> Void) {
-        guard let b = selectedIndex, let i = boards[b].tiles.firstIndex(where: { $0.id == tile }) else { return }
-        change(&boards[b].tiles[i])
+        for b in boards.indices {
+            if let i = boards[b].tiles.firstIndex(where: { $0.id == tile }) {
+                change(&boards[b].tiles[i])
+                return
+            }
+        }
     }
 
     // MARK: boards
@@ -114,6 +133,12 @@ final class LayoutStore {
         guard boards.count > 1, let i = boards.firstIndex(where: { $0.id == board }) else { return }
         boards.remove(at: i)
         if selectedBoardID == board { selectedBoardID = boards[max(0, i - 1)].id }
+    }
+
+    /// The apps that bring this board up; an empty list turns that off.
+    func setApps(_ board: UUID, _ apps: [String]) {
+        guard let i = boards.firstIndex(where: { $0.id == board }) else { return }
+        boards[i].apps = apps.isEmpty ? nil : apps
     }
 
     func moveBoard(_ board: UUID, by offset: Int) {

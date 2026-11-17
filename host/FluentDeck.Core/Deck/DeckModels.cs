@@ -52,11 +52,13 @@ public sealed class DeckStateBinding
 
 public sealed class DeckAction
 {
-    /// <summary>launch | url | keys | text | builtin | sequence | delay</summary>
+    /// <summary>launch | focus | url | keys | text | builtin | sequence | delay</summary>
     public string Type { get; set; } = "";
 
-    // launch / url
+    // launch / url / focus. "focus" brings the app whose program is Target to the front if it has a
+    // window open, and otherwise starts Target unless Launch is false.
     public string? Target { get; set; }
+    public bool? Launch { get; set; }
     public string? Arguments { get; set; }
     public string? WorkingDirectory { get; set; }
     public bool Hidden { get; set; }

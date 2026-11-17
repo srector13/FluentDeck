@@ -68,7 +68,7 @@ async def main(a):
         token = paired["token"]
         welcome = await c.recv()
         ids = [p["id"] for p in welcome["panels"]]
-        check(welcome["type"] == "welcome" and {"deck", "media", "audio", "system", "theme", "desktops"} <= set(ids), f"welcome lists panels {ids}")
+        check(welcome["type"] == "welcome" and {"deck", "media", "audio", "system", "theme", "desktops", "apps", "network", "clipboard"} <= set(ids), f"welcome lists panels {ids}")
 
         await c.send(type="subscribe", topics=ids)
         await c.until(lambda m: set(ids) <= set(c.states), what="snapshots")
@@ -103,6 +103,20 @@ async def main(a):
         check(r["ok"], "desktops.previous goes back")
         r = await c.invoke("desktops", "switch", index=5)
         check(not r["ok"] and "doesn't exist" in r["error"], "switching to a missing desktop → friendly error")
+        apps = c.states["apps"]
+        check(apps["foreground"]["exe"] == "code.exe" and len(apps["running"]) >= 3 and all(a["icon"].startswith("/assets/") for a in apps["running"]),
+              f"apps lists {len(apps['running'])} open apps, {apps['foreground']['name']} in front")
+        r = await c.invoke("apps", "focus", exe="spotify.exe")
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "apps" and m["data"]["foreground"]["exe"] == "spotify.exe", what="focus")
+        check(r["ok"], "apps.focus brings an app to the front")
+        r = await c.invoke("apps", "focus", exe="nothing.exe")
+        check(not r["ok"] and "isn't open" in r["error"], "focusing an app that isn't open → friendly error")
+        r = await c.invoke("clipboard", "setText", text="hello from the iPad", paste=True)
+        r2 = await c.invoke("clipboard", "getText")
+        check(r["ok"] and r2["ok"] and r2["data"]["text"] == "hello from the iPad", "clipboard round-trips text")
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "network" and len(m["data"]["downHistory"]) >= 2, what="network samples", timeout=5)
+        n = c.states["network"]
+        check(n["downBps"] >= 0 and n["upBps"] >= 0 and isinstance(n["disks"], list), f"network reports {n['adapter']} at {n['downBps']:.0f} B/s down")
         r = await c.invoke("deck", "press", buttonId="main/nope")
         check(not r["ok"] and "no longer exists" in r["error"], "unknown button → friendly error")
         r = await c.invoke("media", "explode")
@@ -178,6 +192,16 @@ async def main(a):
             await deck(lambda d: "Notes" in labels(d), "new key in state")
             r = await c.invoke("deck", "press", buttonId="main/notes")
             check(r["ok"], "the new key runs")
+
+            r = await c.invoke("deck", "saveButton", pageId="dev",
+                               button={"label": "Horizon", "action": {"type": "focus", "target": "C:\\Program Files\\Omnissa\\horizon-client.exe"},
+                                       "state": {"topic": "apps", "path": "foreground.exe", "equals": "horizon-client.exe"}})
+            check(r["ok"], "saveButton accepts a switch-to-app key")
+            r2 = await c.invoke("deck", "press", buttonId=r["data"]["buttonId"]) if r["ok"] else {"ok": False}
+            check(r2["ok"], "the switch-to-app key runs")
+            await c.invoke("deck", "deleteButton", buttonId=r["data"]["buttonId"]) if r["ok"] else None
+            r = await c.invoke("deck", "saveButton", pageId="dev", button={"label": "Bad", "action": {"type": "focus"}})
+            check(not r["ok"], "a switch-to-app key with no program is refused")
 
             r = await c.invoke("deck", "saveButton", pageId="main", buttonId="main/notes",
                                button={"label": "Notepad", "symbol": "note.text", "action": {"type": "keys", "keys": "Ctrl+Alt+N"}})

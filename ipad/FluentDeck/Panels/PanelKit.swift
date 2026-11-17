@@ -128,6 +128,10 @@ enum PanelCatalog {
         RemindersPanel.spec,
         ClockPanel.spec,
         DesktopsPanel.spec,
+        TimerPanel.spec,
+        WeatherPanel.spec,
+        NetworkPanel.spec,
+        ClipboardPanel.spec,
     ]
 
     static func spec(for kind: String) -> PanelSpec? { all.first { $0.kind == kind } }

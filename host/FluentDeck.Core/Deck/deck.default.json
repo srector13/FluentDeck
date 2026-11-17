@@ -6,6 +6,7 @@
 // "state"   : light the button up when a live value matches, e.g. mic muted
 // "action"  : one of
 //    { "type": "launch",  "target": "C:\\path\\app.exe", "arguments": "...", "workingDirectory": "...", "hidden": false }
+//    { "type": "focus",   "target": "C:\\path\\app.exe", "launch": true }   (bring its window to the front; start it if it isn't open)
 //    { "type": "url",     "target": "https://... or ms-settings: or spotify:" }
 //    { "type": "keys",    "keys": "Win+Shift+S"  (space-separate chords: "Ctrl+K Ctrl+S") }
 //    { "type": "text",    "text": "types this text" }

@@ -6,6 +6,11 @@ import UniformTypeIdentifiers
 struct DashboardView: View {
     @Environment(AppModel.self) private var app
 
+    /// The app in front on the PC, which can bring up a board set up for it.
+    private var foregroundApp: String? {
+        app.connection.store.box("apps").decoded(AppsState.self)?.foreground?.exe
+    }
+
     var body: some View {
         let layout = app.layout
         TabView(selection: Binding(
@@ -19,6 +24,7 @@ struct DashboardView: View {
                 .tag(board.id)
             }
         }
+        .onChange(of: foregroundApp, initial: true) { _, exe in app.foregroundAppChanged(exe) }
     }
 }
 
@@ -178,6 +184,11 @@ private struct BoardMenu: View {
         Menu {
             Section("This board") {
                 Button { app.promptRename(board) } label: { Label("Rename…", systemImage: "pencil") }
+                if app.connection.hostProvides("apps") {
+                    Button { app.promptBoardApps(board) } label: {
+                        Label(board.apps?.isEmpty == false ? "Show for Apps (\(board.apps!.count))…" : "Show for Apps…", systemImage: "macwindow.badge.plus")
+                    }
+                }
                 Button { withAnimation(.snappy) { layout.moveBoard(board.id, by: -1) } } label: { Label("Move left", systemImage: "arrow.left") }
                 Button { withAnimation(.snappy) { layout.moveBoard(board.id, by: 1) } } label: { Label("Move right", systemImage: "arrow.right") }
                 if layout.boards.count > 1 {

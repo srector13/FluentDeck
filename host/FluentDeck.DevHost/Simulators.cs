@@ -269,3 +269,66 @@ internal sealed class SimDesktopsPanel(ILogger<SimDesktopsPanel> log) : PanelPro
         return Task.FromResult<object?>(null);
     }
 }
+
+/// <summary>A few open apps, Visual Studio Code in front. "focus" brings one forward.</summary>
+internal sealed class SimAppsPanel(AssetStore assets, ILogger<SimAppsPanel> log) : PanelProvider
+{
+    private List<RunningApp>? _running;
+    private RunningApp? _front;
+
+    public override PanelDescriptor Descriptor => BuiltInPanels.Apps;
+
+    public override Task StartAsync(CancellationToken ct)
+    {
+        RunningApp App(string exe, string name, (byte, byte, byte) top, (byte, byte, byte) bottom) =>
+            new(exe, name, $@"C:\Program Files\{name}\{exe}", assets.Put(Png.Gradient(64, top, bottom, rounded: true)));
+        _running =
+        [
+            App("horizon-client.exe", "Omnissa Horizon Client", (0x5B, 0x8D, 0xEF), (0x1F, 0x3C, 0x88)),
+            App("msedge.exe", "Microsoft Edge", (0x35, 0xC1, 0xF1), (0x0C, 0x59, 0xA4)),
+            App("ms-teams.exe", "Microsoft Teams", (0x7B, 0x83, 0xEB), (0x4B, 0x53, 0xBC)),
+            App("spotify.exe", "Spotify", (0x1E, 0xD7, 0x60), (0x13, 0x85, 0x3B)),
+            App("code.exe", "Visual Studio Code", (0x3E, 0xA6, 0xF0), (0x0B, 0x5C, 0xA8)),
+        ];
+        _front = _running.First(a => a.Exe == "code.exe");
+        Emit();
+        return Task.CompletedTask;
+    }
+
+    private void Emit() => Publish(new AppsState(_front, _running!.OrderBy(a => a.Name).ToList()));
+
+    public override Task<object?> InvokeAsync(string action, JsonObject args, CancellationToken ct)
+    {
+        if (action != "focus") throw UnknownAction(action);
+        var exe = args.String("exe");
+        _front = _running!.FirstOrDefault(a => string.Equals(a.Exe, exe, StringComparison.OrdinalIgnoreCase))
+                 ?? throw new PanelActionException($"{Path.GetFileNameWithoutExtension(exe)} isn't open on the PC.");
+        log.LogInformation("[apps] focus {Exe} (simulated)", exe);
+        Emit();
+        return Task.FromResult<object?>(null);
+    }
+}
+
+/// <summary>A clipboard that lives in memory.</summary>
+internal sealed class SimClipboardPanel(ILogger<SimClipboardPanel> log) : PanelProvider
+{
+    private string _text = "Copied on the PC";
+
+    public override PanelDescriptor Descriptor => BuiltInPanels.Clipboard;
+    public override Task StartAsync(CancellationToken ct) { Publish(new { }); return Task.CompletedTask; }
+
+    public override Task<object?> InvokeAsync(string action, JsonObject args, CancellationToken ct)
+    {
+        switch (action)
+        {
+            case "setText":
+                _text = args.OptionalString("text") ?? "";
+                log.LogInformation("[clipboard] set {Length} characters{Paste} (simulated)", _text.Length, args.Bool("paste") ? " and pasted" : "");
+                return Task.FromResult<object?>(null);
+            case "getText":
+                return Task.FromResult<object?>(new { text = _text });
+            default:
+                throw UnknownAction(action);
+        }
+    }
+}

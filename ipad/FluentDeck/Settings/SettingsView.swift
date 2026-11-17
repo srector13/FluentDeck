@@ -52,6 +52,14 @@ struct SettingsView: View {
                     Text("A key lights up while what it controls is on, such as a muted mic. Lit keys are white unless you choose the accent color.")
                 }
 
+                Section {
+                    Toggle("Switch boards with the app in front", isOn: $settings.autoSwitchBoards)
+                } header: {
+                    Text("Boards")
+                } footer: {
+                    Text("A board set to show for an app (⋯ → Show for Apps…) comes up when that app is in front on the PC, and the iPad goes back when you leave it.")
+                }
+
                 Section("Clock") {
                     Picker("Time format", selection: Binding(
                         get: { settings.clock24Hour.map { $0 ? 24 : 12 } ?? 0 },

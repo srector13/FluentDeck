@@ -41,6 +41,9 @@ internal static class Program
         builder.Services.AddPanel<SystemPanel>();
         builder.Services.AddPanel<ThemePanel>();
         builder.Services.AddPanel<DesktopsPanel>();
+        builder.Services.AddPanel<AppsPanel>();
+        builder.Services.AddPanel<ClipboardPanel>();
+        builder.Services.AddPanel<NetworkPanel>();
         builder.Services.AddSingleton<BonjourAdvertiser>();
 
         var app = builder.Build();
