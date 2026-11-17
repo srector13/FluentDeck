@@ -175,6 +175,33 @@ final class ScreenshotTests: XCTestCase {
         shot("21-key-editor-switch-app")
         app.buttons["Cancel"].firstMatch.tap()
         waitUntilGone(editorTitle)
+
+        // 22. Swiping sideways moves to the next board (Home → Dev), even starting on a deck key.
+        launch(app, connected(board: 0), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        app.swipeLeft()
+        XCTAssertTrue(app.buttons["VS Code"].firstMatch.waitForExistence(timeout: 5), "Swiping left didn't show the Dev board")
+        sleep(1)
+        shot("22-swiped-to-dev")
+
+        // 23. Choosing which calendars a Calendar widget shows.
+        launch(app, connected(board: 0), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        app.buttons["Customize"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Done"].firstMatch.waitForExistence(timeout: 10))
+        app.buttons["Options for Calendar"].firstMatch.tap()
+        let choose = app.buttons["Choose Calendars…"].firstMatch
+        XCTAssertTrue(choose.waitForExistence(timeout: 10), "Calendar has no Choose Calendars")
+        choose.tap()
+        let showAll = app.switches["Show all calendars"].firstMatch
+        XCTAssertTrue(showAll.waitForExistence(timeout: 10), "Calendar chooser did not open")
+        showAll.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
+        app.buttons["Family"].firstMatch.tap()
+        sleep(1)
+        shot("23-choose-calendars")
+        app.buttons["Save"].firstMatch.tap()
+        waitUntilGone(showAll)
+        app.buttons["Done"].firstMatch.tap()
     }
 
     // MARK: helpers

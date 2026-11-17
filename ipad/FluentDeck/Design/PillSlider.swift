@@ -32,11 +32,12 @@ struct PillSlider: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { drag in
                         guard enabled else { return }
-                        if !dragging { dragging = true; onEditingChanged(true) }
+                        if !dragging { dragging = true; TouchArbiter.sliderActive = true; onEditingChanged(true) }
                         let f = min(max(drag.location.x / width, 0), 1)
                         value = range.lowerBound + f * span
                     }
                     .onEnded { _ in
+                        TouchArbiter.sliderActive = false
                         guard enabled else { return }
                         dragging = false
                         onEditingChanged(false)

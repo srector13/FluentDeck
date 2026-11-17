@@ -312,6 +312,8 @@ private struct DeckKey: View {
     }
 
     private func press() {
+        // The finger was swiping to another board, not pressing this key.
+        guard !TouchArbiter.swipeInProgress else { return }
         presses += 1
         running = true
         Task { @MainActor in

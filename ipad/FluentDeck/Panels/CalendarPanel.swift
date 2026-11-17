@@ -11,6 +11,9 @@ struct CalendarPanel: View {
         symbol: "calendar",
         sizes: [.small, .medium, .large],
         defaultSize: .medium,
+        menu: { ctx in
+            [.action("Choose Calendars…", symbol: "checklist") { ctx.overlays.present(size: .page) { PlannerSourcesDialog(ctx: ctx, kind: .calendars) } }]
+        },
         drawer: { AnyView(CalendarDrawer(ctx: $0)) },
         view: { AnyView(CalendarPanel(ctx: $0)) })
 
@@ -36,7 +39,7 @@ struct CalendarPanel: View {
 
     @ViewBuilder
     private func agenda(now: Date) -> some View {
-        let upcoming = planner.events.filter { $0.end > now }
+        let upcoming = planner.events(in: PlannerSourcesDialog.chosen(ctx, .calendars)).filter { $0.end > now }
         if upcoming.isEmpty {
             PanelEmptyState(symbol: "calendar", text: "Nothing coming up")
         } else if ctx.size == .small, let next = upcoming.first {
@@ -83,7 +86,7 @@ struct CalendarDrawer: View {
     var body: some View {
         TimelineView(.everyMinute) { timeline in
             let now = timeline.date
-            let days = Self.days(planner.events.filter { $0.end > now })
+            let days = Self.days(planner.events(in: PlannerSourcesDialog.chosen(ctx, .calendars)).filter { $0.end > now })
             if planner.calendarAccess != .allowed {
                 PanelEmptyState(symbol: "calendar", text: "Calendar access is off").frame(height: 120)
             } else if days.isEmpty {

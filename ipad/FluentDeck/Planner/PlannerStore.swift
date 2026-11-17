@@ -12,6 +12,7 @@ struct PlannerEvent: Identifiable, Equatable {
     var allDay: Bool
     var location: String?
     var color: Color
+    var calendarID: String
 }
 
 /// An open reminder from the lists set up on this iPad.
@@ -22,6 +23,16 @@ struct PlannerReminder: Identifiable, Equatable {
     /// The due date carries a time of day, not just a day.
     var dueHasTime: Bool
     var list: String
+    var color: Color
+    var listID: String
+}
+
+/// A calendar or a reminders list, for choosing which ones a widget shows.
+struct PlannerSource: Identifiable, Equatable {
+    var id: String
+    var title: String
+    /// The account it belongs to: iCloud, Gmail, Exchange…
+    var account: String
     var color: Color
 }
 
@@ -39,6 +50,21 @@ final class PlannerStore {
     private(set) var events: [PlannerEvent] = []
     /// Open reminders: dated ones first (soonest first), then the rest.
     private(set) var reminders: [PlannerReminder] = []
+    /// The calendars and reminders lists on this iPad, by account.
+    private(set) var calendars: [PlannerSource] = []
+    private(set) var reminderLists: [PlannerSource] = []
+
+    /// Events from these calendars (nil: all of them).
+    func events(in calendars: Set<String>?) -> [PlannerEvent] {
+        guard let calendars else { return events }
+        return events.filter { calendars.contains($0.calendarID) }
+    }
+
+    /// Reminders from these lists (nil: all of them).
+    func reminders(in lists: Set<String>?) -> [PlannerReminder] {
+        guard let lists else { return reminders }
+        return reminders.filter { lists.contains($0.listID) }
+    }
 
     @ObservationIgnored private let store = EKEventStore()
     @ObservationIgnored private var items: [String: EKReminder] = [:]
@@ -53,6 +79,8 @@ final class PlannerStore {
             remindersAccess = .allowed
             events = PlannerDemo.events()
             reminders = PlannerDemo.reminders()
+            calendars = PlannerDemo.calendars
+            reminderLists = PlannerDemo.lists
             return
         }
         observer = NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: store, queue: .main) { [weak self] _ in
@@ -108,8 +136,10 @@ final class PlannerStore {
             let found = store.events(matching: store.predicateForEvents(withStart: start, end: end, calendars: nil))
             let upcoming = found.filter { $0.endDate > now }.sorted { $0.startDate < $1.startDate }
             events = upcoming.prefix(80).map(Self.event)
+            calendars = Self.sources(store.calendars(for: .event))
         } else {
             events = []
+            calendars = []
         }
 
         if remindersAccess == .allowed {
@@ -118,7 +148,9 @@ final class PlannerStore {
                 let list = found ?? []
                 Task { @MainActor in self?.apply(list) }
             }
+            reminderLists = Self.sources(store.calendars(for: .reminder))
         } else {
+            reminderLists = []
             reminders = []
             items = [:]
         }
@@ -156,6 +188,12 @@ final class PlannerStore {
         reminders = Array(list.prefix(100))
     }
 
+    private static func sources(_ calendars: [EKCalendar]) -> [PlannerSource] {
+        calendars
+            .map { PlannerSource(id: $0.calendarIdentifier, title: $0.title, account: $0.source?.title ?? "", color: color(of: $0)) }
+            .sorted { ($0.account, $0.title) < ($1.account, $1.title) }
+    }
+
     private static func event(_ item: EKEvent) -> PlannerEvent {
         let title = item.title ?? ""
         let location = item.location ?? ""
@@ -167,7 +205,8 @@ final class PlannerStore {
             end: item.endDate,
             allDay: item.isAllDay,
             location: location.isEmpty ? nil : location,
-            color: color(of: item.calendar))
+            color: color(of: item.calendar),
+            calendarID: item.calendar?.calendarIdentifier ?? "")
     }
 
     private static func reminder(_ item: EKReminder) -> PlannerReminder {
@@ -179,7 +218,8 @@ final class PlannerStore {
             due: parts.flatMap { Calendar.current.date(from: $0) },
             dueHasTime: parts?.hour != nil,
             list: item.calendar?.title ?? "",
-            color: color(of: item.calendar))
+            color: color(of: item.calendar),
+            listID: item.calendar?.calendarIdentifier ?? "")
     }
 
     private static func color(of calendar: EKCalendar?) -> Color {
@@ -247,17 +287,30 @@ enum PlannerDemo {
         return Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: day) ?? day
     }
 
+    static let calendars = [
+        PlannerSource(id: "work", title: "Work", account: "Exchange", color: Color(hex: "#4A9BFF")),
+        PlannerSource(id: "family", title: "Family", account: "iCloud", color: Color(hex: "#3DD68C")),
+        PlannerSource(id: "home", title: "Home", account: "iCloud", color: Color(hex: "#FF9F43")),
+        PlannerSource(id: "personal", title: "Personal", account: "iCloud", color: Color(hex: "#FF6B6B")),
+    ]
+    static let lists = [
+        PlannerSource(id: "work", title: "Work", account: "iCloud", color: Color(hex: "#4A9BFF")),
+        PlannerSource(id: "home", title: "Home", account: "iCloud", color: Color(hex: "#FF9F43")),
+        PlannerSource(id: "groceries", title: "Groceries", account: "iCloud", color: Color(hex: "#3DD68C")),
+    ]
+
     static func events(now: Date = Date()) -> [PlannerEvent] {
-        let blue = Color(hex: "#4A9BFF"), orange = Color(hex: "#FF9F43"), green = Color(hex: "#3DD68C"), red = Color(hex: "#FF6B6B")
-        func event(_ title: String, _ start: Date, _ minutes: Double, _ color: Color, _ location: String? = nil) -> PlannerEvent {
-            PlannerEvent(id: title, title: title, start: start, end: start.addingTimeInterval(minutes * 60), allDay: false, location: location, color: color)
+        func event(_ title: String, _ start: Date, _ minutes: Double, _ calendar: String, _ location: String? = nil) -> PlannerEvent {
+            let color = calendars.first { $0.id == calendar }?.color ?? .gray
+            return PlannerEvent(id: title, title: title, start: start, end: start.addingTimeInterval(minutes * 60), allDay: false,
+                                location: location, color: color, calendarID: calendar)
         }
         return [
-            event("Design review", quarterHour(after: 20, from: now), 45, blue, "Room 4"),
-            event("Lunch with the team", quarterHour(after: 120, from: now), 60, orange),
-            event("Release check-in", quarterHour(after: 270, from: now), 30, green),
-            event("Dentist", tomorrow(at: 9, from: now), 60, red),
-            event("Sprint planning", tomorrow(at: 14, from: now), 60, blue, "Room 2"),
+            event("Design review", quarterHour(after: 20, from: now), 45, "work", "Room 4"),
+            event("Lunch with the team", quarterHour(after: 120, from: now), 60, "home"),
+            event("Release check-in", quarterHour(after: 270, from: now), 30, "family"),
+            event("Dentist", tomorrow(at: 9, from: now), 60, "personal"),
+            event("Sprint planning", tomorrow(at: 14, from: now), 60, "work", "Room 2"),
         ].sorted { $0.start < $1.start }
     }
 
@@ -265,11 +318,11 @@ enum PlannerDemo {
         let work = Color(hex: "#4A9BFF"), home = Color(hex: "#FF9F43")
         let today = Calendar.current.startOfDay(for: now)
         return [
-            PlannerReminder(id: "1", title: "Renew the domain", due: today.addingTimeInterval(-86_400), dueHasTime: false, list: "Work", color: work),
-            PlannerReminder(id: "2", title: "Send the invoice", due: today, dueHasTime: false, list: "Work", color: work),
-            PlannerReminder(id: "3", title: "Book flights", due: tomorrow(at: 10, from: now), dueHasTime: true, list: "Home", color: home),
-            PlannerReminder(id: "4", title: "Call the bank", due: nil, dueHasTime: false, list: "Home", color: home),
-            PlannerReminder(id: "5", title: "Water the plants", due: nil, dueHasTime: false, list: "Home", color: home),
+            PlannerReminder(id: "1", title: "Renew the domain", due: today.addingTimeInterval(-86_400), dueHasTime: false, list: "Work", color: work, listID: "work"),
+            PlannerReminder(id: "2", title: "Send the invoice", due: today, dueHasTime: false, list: "Work", color: work, listID: "work"),
+            PlannerReminder(id: "3", title: "Book flights", due: tomorrow(at: 10, from: now), dueHasTime: true, list: "Home", color: home, listID: "home"),
+            PlannerReminder(id: "4", title: "Call the bank", due: nil, dueHasTime: false, list: "Home", color: home, listID: "home"),
+            PlannerReminder(id: "5", title: "Water the plants", due: nil, dueHasTime: false, list: "Home", color: home, listID: "home"),
         ]
     }
 }

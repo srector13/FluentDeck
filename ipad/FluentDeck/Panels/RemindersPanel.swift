@@ -12,6 +12,9 @@ struct RemindersPanel: View {
         symbol: "checklist",
         sizes: [.small, .medium, .large],
         defaultSize: .medium,
+        menu: { ctx in
+            [.action("Choose Lists…", symbol: "checklist") { ctx.overlays.present(size: .page) { PlannerSourcesDialog(ctx: ctx, kind: .lists) } }]
+        },
         drawer: { AnyView(RemindersDrawer(ctx: $0)) },
         view: { AnyView(RemindersPanel(ctx: $0)) })
 
@@ -37,7 +40,7 @@ struct RemindersPanel: View {
 
     @ViewBuilder
     private func list(now: Date) -> some View {
-        let open = planner.reminders
+        let open = planner.reminders(in: PlannerSourcesDialog.chosen(ctx, .lists))
         if open.isEmpty {
             PanelEmptyState(symbol: "checkmark.circle", text: "All done")
         } else if ctx.size == .small {
@@ -75,7 +78,7 @@ struct RemindersDrawer: View {
 
     var body: some View {
         TimelineView(.everyMinute) { timeline in
-            let open = planner.reminders
+            let open = planner.reminders(in: PlannerSourcesDialog.chosen(ctx, .lists))
             if planner.remindersAccess != .allowed {
                 PanelEmptyState(symbol: "checklist", text: "Reminders access is off").frame(height: 120)
             } else if open.isEmpty {

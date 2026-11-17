@@ -1,8 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The boards, in the system tab bar. Each board is a Control Center-style grid of modules under
-/// a standard toolbar: the PC on the left; add, customize and more on the right.
+/// The boards, one screen each: swipe sideways between them, or pick one in the switcher at the
+/// top. Each board is a Control Center-style grid of modules under a standard toolbar: the PC on
+/// the left, the boards in the middle, and add, customize and more on the right.
 struct DashboardView: View {
     @Environment(AppModel.self) private var app
 
@@ -12,23 +13,175 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        let layout = app.layout
-        TabView(selection: Binding(
-            get: { layout.selectedBoardID ?? layout.boards.first?.id ?? UUID() },
-            set: { layout.selectedBoardID = $0 })) {
-            ForEach(layout.boards) { board in
-                NavigationStack {
-                    BoardView(board: board)
+        NavigationStack {
+            BoardPager()
+                .background { AmbientBackground() }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) { HostMenu() }
+                    ToolbarItem(placement: .principal) { BoardSwitcher() }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if app.editing {
+                            Button("Done") { withAnimation(.snappy) { app.editing = false } }
+                                .fontWeight(.semibold)
+                        } else {
+                            Button { app.showWidgetPicker() } label: { Label("Add widgets", systemImage: "plus") }
+                            Button { withAnimation(.snappy) { app.editing = true } } label: { Label("Customize", systemImage: "pencil") }
+                            if let board = app.layout.selectedBoard { BoardMenu(board: board) }
+                        }
+                    }
                 }
-                .tabItem { Label(board.name, systemImage: board.symbol ?? "square.grid.2x2.fill") }
-                .tag(board.id)
-            }
         }
         .onChange(of: foregroundApp, initial: true) { _, exe in app.foregroundAppChanged(exe) }
     }
 }
 
-/// One board: its grid of modules and its toolbar.
+/// Lays the boards side by side and follows a sideways swipe from one to the next, like Home
+/// Screen pages. Only the board showing is drawn, plus its neighbours while a swipe is under way.
+private struct BoardPager: View {
+    @Environment(AppModel.self) private var app
+    @State private var drag: CGFloat = 0
+    @State private var horizontal: Bool?
+    @State private var settling = false
+    private let gap: CGFloat = 24
+
+    var body: some View {
+        let boards = app.layout.boards
+        let index = app.layout.selectedIndex ?? 0
+        GeometryReader { g in
+            let width = g.size.width
+            ZStack {
+                ForEach(Array(boards.enumerated()), id: \.element.id) { i, board in
+                    if i == index || (abs(i - index) == 1 && (drag != 0 || settling)) {
+                        BoardView(board: board)
+                            .frame(width: width, height: g.size.height)
+                            .offset(x: CGFloat(i - index) * (width + gap) + drag)
+                    }
+                }
+            }
+            .frame(width: width, height: g.size.height)
+            .contentShape(Rectangle())
+            .simultaneousGesture(swipe(width: width, index: index, count: boards.count))
+        }
+    }
+
+    private func swipe(width: CGFloat, index: Int, count: Int) -> some Gesture {
+        DragGesture(minimumDistance: 18, coordinateSpace: .global)
+            .onChanged { value in
+                if horizontal == nil {
+                    // A slider being dragged, or rearranging widgets, keeps the board still.
+                    let sideways = abs(value.translation.width) > abs(value.translation.height) * 1.3
+                    horizontal = sideways && !TouchArbiter.sliderActive && !app.editing && count > 1
+                    if horizontal == true { TouchArbiter.swipeBegan() }
+                }
+                guard horizontal == true else { return }
+                var dx = value.translation.width
+                if (dx > 0 && index == 0) || (dx < 0 && index == count - 1) { dx *= 0.25 } // rubber band at the ends
+                drag = dx
+            }
+            .onEnded { value in
+                defer { horizontal = nil }
+                guard horizontal == true else { return }
+                TouchArbiter.swipeEnded()
+                let moved = value.translation.width, flung = value.predictedEndTranslation.width
+                var target = index
+                if (moved < -width * 0.22 || flung < -width * 0.5), index < count - 1 { target = index + 1 }
+                if (moved > width * 0.22 || flung > width * 0.5), index > 0 { target = index - 1 }
+                settle(at: target, from: index, width: width)
+            }
+    }
+
+    /// Slide the rest of the way, then make the new board the current one where it already sits.
+    private func settle(at target: Int, from index: Int, width: CGFloat) {
+        guard target != index, app.layout.boards.indices.contains(target) else {
+            withAnimation(.snappy(duration: 0.25)) { drag = 0 }
+            return
+        }
+        settling = true
+        let id = app.layout.boards[target].id
+        withAnimation(.snappy(duration: 0.3)) {
+            drag = target > index ? -(width + gap) : width + gap
+        } completion: {
+            var still = Transaction()
+            still.disablesAnimations = true
+            withTransaction(still) {
+                app.layout.selectedBoardID = id
+                drag = 0
+                settling = false
+            }
+        }
+    }
+}
+
+/// Settles which gesture a touch belongs to between a board swipe and the controls on a board.
+@MainActor
+enum TouchArbiter {
+    /// A slider is being dragged: a sideways drag is the slider's, not a swipe between boards.
+    static var sliderActive = false
+    private static var swipedAt: Date?
+    private static var swiping = false
+
+    static func swipeBegan() { swiping = true }
+    static func swipeEnded() { swiping = false; swipedAt = .now }
+
+    /// A board swipe is under way or just ended, so a key under the finger shouldn't fire.
+    static var swipeInProgress: Bool {
+        swiping || (swipedAt.map { Date.now.timeIntervalSince($0) < 0.35 } ?? false)
+    }
+}
+
+/// The boards by name, the one showing on a lighter pill, like the iPadOS tab bar. Tap one to
+/// go there.
+private struct BoardSwitcher: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.theme) private var theme
+    @Namespace private var pill
+
+    var body: some View {
+        let layout = app.layout
+        let current = layout.selectedBoard?.id
+        HStack(spacing: 2) {
+            ForEach(layout.boards) { board in
+                let on = board.id == current
+                Button {
+                    withAnimation(.snappy(duration: 0.3)) { layout.selectedBoardID = board.id }
+                } label: {
+                    Text(board.name)
+                        .font(.system(size: 16, weight: on ? .semibold : .medium))
+                        .foregroundStyle(on ? theme.accent : theme.textPrimary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 16)
+                        .frame(height: 36)
+                        .background {
+                            if on {
+                                Capsule().fill(theme.controlFillSecondary).matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(board.name)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .modifier(SwitcherSurface())
+    }
+}
+
+/// iPadOS 26 puts toolbar items on glass itself; before that the switcher brings its own.
+private struct SwitcherSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content.background(Capsule().fill(.ultraThinMaterial))
+        }
+    }
+}
+
+/// One board: its grid of modules.
 private struct BoardView: View {
     let board: Board
     @Environment(AppModel.self) private var app
@@ -65,23 +218,7 @@ private struct BoardView: View {
         .padding(.horizontal, Metrics.margin)
         .padding(.top, 6)
         .padding(.bottom, 12)
-        .background { AmbientBackground() }
         .animation(.snappy, value: app.connection.phase)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) { HostMenu() }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if app.editing {
-                    Button("Done") { withAnimation(.snappy) { app.editing = false } }
-                        .fontWeight(.semibold)
-                } else {
-                    Button { app.showWidgetPicker() } label: { Label("Add widgets", systemImage: "plus") }
-                    Button { withAnimation(.snappy) { app.editing = true } } label: { Label("Customize", systemImage: "pencil") }
-                    BoardMenu(board: board)
-                }
-            }
-        }
     }
 
     @ViewBuilder
