@@ -32,6 +32,20 @@ final class AppSettings {
     var haptics: Bool { didSet { save("haptics", haptics) } }
     /// nil follows the iPad's region; true and false force 24- or 12-hour time.
     var clock24Hour: Bool? { didSet { save("clock24Hour", clock24Hour) } }
+    /// The AI server (vLLM), e.g. "100.64.1.2:8000", and an optional GPU metrics exporter.
+    var sparkAddress: String { didSet { save("sparkAddress", sparkAddress) } }
+    var sparkGPUAddress: String { didSet { save("sparkGPUAddress", sparkGPUAddress) } }
+    /// vLLM's --api-key, if it was started with one. Kept in the Keychain.
+    var sparkAPIKey: String {
+        get { access(keyPath: \.sparkAPIKey); return Keychain.token(for: Self.sparkKeyID) ?? "" }
+        set {
+            withMutation(keyPath: \.sparkAPIKey) {
+                if newValue.isEmpty { Keychain.deleteToken(for: Self.sparkKeyID) } else { Keychain.setToken(newValue, for: Self.sparkKeyID) }
+            }
+        }
+    }
+    private static let sparkKeyID = "spark-api-key"
+
     /// The names given to PCs on this iPad, by host id.
     private(set) var pcNames: [String: String] { didSet { save("pcNames", pcNames) } }
 
@@ -49,6 +63,8 @@ final class AppSettings {
         autoSwitchBoards = value("autoSwitchBoards") ?? true
         clock24Hour = value("clock24Hour")
         pcNames = value("pcNames") ?? [:]
+        sparkAddress = value("sparkAddress") ?? ""
+        sparkGPUAddress = value("sparkGPUAddress") ?? ""
     }
 
     private func save(_ key: String, _ value: Any?) {

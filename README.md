@@ -30,6 +30,7 @@
 | **Weather** | S / M / L / Wide | Conditions now, today's high and low, and the days ahead, for a place you search for or where the iPad is. Forecasts from [Open-Meteo](https://open-meteo.com) (free, no account); the place is sent to it. Runs on the iPad. |
 | **Network & Disks** | S / M / L / Wide | The PC's download and upload speed with the last minute as a graph, and free space on its disks. |
 | **Clipboard** | S / M / L | Send text copied on the iPad to the PC, paste it straight into the app in front, or copy the PC's clipboard to the iPad. iOS asks "Allow Paste" when the iPad's clipboard is read, unless you allow it in Settings › FluentDeck. |
+| **Spark** | S ▴ / M ▴ / L / Wide | Health of your AI server (vLLM): online or not, the model it serves, tokens per second, requests running and queued, time to first token, KV cache, and with a GPU exporter the GPU's load, memory, temperature and power. The iPad reads it directly (a Tailscale address works); set it in Settings › AI Server. |
 | **Desktops** | S / M / Banner | Windows' virtual desktops by name, the one on screen lit; tap one to go there. Works even when a full-screen remote desktop (Omnissa Horizon, RDP) has the keyboard. |
 
 **▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a card slides up from the bottom of the screen with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
@@ -106,6 +107,7 @@ The UI tests drive the app with launch arguments (`ipad/FluentDeck/App/LaunchOpt
 - **Accent color**: swatches of the iOS system colours or any colour; buttons, switches, gauges and the selected tab follow it.
 - **Deck**: show or hide key names, light keys white or in the accent colour, haptic feedback on key presses.
 - **Clock**: automatic, 12-hour or 24-hour.
+- **AI Server**: the vLLM address for the Spark widget, its API key if it has one, and an optional GPU metrics exporter.
 - **Boards**: switch boards with the app in front on the PC.
 - **Keep screen awake** while connected.
 

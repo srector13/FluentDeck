@@ -30,6 +30,12 @@ final class AppModel {
         keepAwake = defaults.object(forKey: "fluentdeck.keepAwake") as? Bool ?? true
         savedHosts = (defaults.data(forKey: "fluentdeck.hosts")).flatMap { try? JSONDecoder().decode([HostEndpoint].self, from: $0) } ?? []
         connection.localName = { [settings] id in settings.pcName(for: id) }
+        SparkMonitor.shared.configuration = { [settings] in
+            (SparkMonitor.url(from: LaunchOptions.spark ?? settings.sparkAddress, defaultPort: 8000),
+             SparkMonitor.url(from: LaunchOptions.sparkGPU ?? settings.sparkGPUAddress, defaultPort: 9400)
+                .map { $0.path.isEmpty ? $0.appending(path: "metrics") : $0 },
+             settings.sparkAPIKey)
+        }
 
         connection.onConnected = { [weak self] endpoint in
             guard let self else { return }

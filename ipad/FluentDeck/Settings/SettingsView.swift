@@ -53,6 +53,31 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    LabeledContent("Address") {
+                        TextField("100.64.0.1:8000", text: $settings.sparkAddress)
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    LabeledContent("API key") {
+                        SecureField("Only if vLLM uses --api-key", text: $settings.sparkAPIKey)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("GPU metrics") {
+                        TextField("Optional, e.g. 100.64.0.1:9400", text: $settings.sparkGPUAddress)
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                } header: {
+                    Text("AI Server")
+                } footer: {
+                    Text("For the Spark widget. The iPad reads vLLM's /health, /v1/models and /metrics at this address (port 8000 unless you give one); a Tailscale address works while Tailscale is on. GPU temperature, load and power need an NVIDIA DCGM exporter (port 9400) or nvidia_gpu_exporter on the Spark.")
+                }
+
+                Section {
                     Toggle("Switch boards with the app in front", isOn: $settings.autoSwitchBoards)
                 } header: {
                     Text("Boards")

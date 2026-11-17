@@ -132,6 +132,7 @@ enum PanelCatalog {
         WeatherPanel.spec,
         NetworkPanel.spec,
         ClipboardPanel.spec,
+        SparkPanel.spec,
     ]
 
     static func spec(for kind: String) -> PanelSpec? { all.first { $0.kind == kind } }

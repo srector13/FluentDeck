@@ -55,7 +55,7 @@ final class LayoutStore {
                 TileInstance(kind: NetworkPanel.spec.kind, size: .large),
                 TileInstance(kind: ClipboardPanel.spec.kind, size: .medium),
                 TileInstance(kind: DesktopsPanel.spec.kind, size: .medium),
-                TileInstance(kind: ClockPanel.spec.kind, size: .medium),
+                TileInstance(kind: SparkPanel.spec.kind, size: .medium),
                 TileInstance(kind: RemindersPanel.spec.kind, size: .medium),
                 TileInstance(kind: CalendarPanel.spec.kind, size: .medium),
                 TileInstance(kind: SystemPanel.spec.kind, size: .medium),

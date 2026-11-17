@@ -16,6 +16,9 @@ enum LaunchOptions {
     static var reset: Bool { args.bool(forKey: "FluentDeckReset") }
     static var pairCode: String? { args.string(forKey: "FluentDeckPairCode").flatMap { $0.isEmpty ? nil : $0 } }
     static var demoPlanner: Bool { args.bool(forKey: "FluentDeckDemoPlanner") }
+    /// `-FluentDeckSpark URL` / `-FluentDeckSparkGPU URL`: the AI server to watch (tests use the DevHost's stand-in).
+    static var spark: String? { args.string(forKey: "FluentDeckSpark").flatMap { $0.isEmpty ? nil : $0 } }
+    static var sparkGPU: String? { args.string(forKey: "FluentDeckSparkGPU").flatMap { $0.isEmpty ? nil : $0 } }
     static var board: Int? { args.object(forKey: "FluentDeckBoard") == nil ? nil : args.integer(forKey: "FluentDeckBoard") }
 
     static var connect: HostEndpoint? {

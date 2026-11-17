@@ -206,6 +206,16 @@ final class ScreenshotTests: XCTestCase {
         app.buttons["Save"].firstMatch.tap()
         waitUntilGone(showAll)
         app.buttons["Done"].firstMatch.tap()
+
+        // 24. The Spark widget's drawer, after a few polls of the stand-in server.
+        launch(app, connected(board: 2), orientation: .landscapeLeft)
+        waitForDashboard(app)
+        sleep(10)
+        shot("24-desk-spark")
+        openDrawer(app, of: "Spark")
+        sleep(4)
+        shot("25-spark-drawer")
+        closeDrawer(app)
     }
 
     // MARK: helpers
@@ -213,7 +223,9 @@ final class ScreenshotTests: XCTestCase {
     private func connected(board: Int, reset: Bool = false) -> [String] {
         (reset ? ["-FluentDeckReset", "YES"] : [])
             + ["-FluentDeckBoard", String(board), "-FluentDeckConnect", host, "-FluentDeckPairCode", code,
-               "-FluentDeckDemoPlanner", "YES"] // stand-in events and reminders; no iOS permission prompts
+               "-FluentDeckDemoPlanner", "YES", // stand-in events and reminders; no iOS permission prompts
+               // The DevHost's stand-in for vLLM and a GPU exporter, for the Spark widget.
+               "-FluentDeckSpark", "http://\(host)/sim/vllm", "-FluentDeckSparkGPU", "http://\(host)/sim/dcgm/metrics"]
     }
 
     /// Slide up the drawer of the widget with this title, by its handle.

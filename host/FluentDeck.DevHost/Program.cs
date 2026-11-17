@@ -34,6 +34,7 @@ builder.Services.AddPanel<NetworkPanel>(); // the DevHost machine's real traffic
 
 var app = builder.Build();
 app.MapFluentDeck();
+SimVllm.Map(app); // a pretend AI server for the Spark widget
 await app.Services.StartFluentDeckAsync();
 
 var auth = app.Services.GetRequiredService<AuthStore>();
