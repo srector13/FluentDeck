@@ -164,7 +164,7 @@ private struct Sparkline: View {
             let pts = points(values, peak: peak, in: size)
             guard let first = pts.first, let last = pts.last else { return }
             p.move(to: CGPoint(x: first.x, y: size.height))
-            p.addLines(pts)
+            for point in pts { p.addLine(to: point) } // addLines would start a new subpath
             p.addLine(to: CGPoint(x: last.x, y: size.height))
             p.closeSubpath()
         }
