@@ -36,7 +36,7 @@ private struct BoardView: View {
             }
 
             GeometryReader { geo in
-                let fit = DashboardGrid.fit(geo.size)
+                let fit = DashboardGrid.fit(geo.size, spans: board.tiles.map(\.size))
                 ScrollView {
                     if board.tiles.isEmpty {
                         EmptyBoard { app.showWidgetPicker() }

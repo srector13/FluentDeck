@@ -11,7 +11,8 @@ extension View {
 
 /// Packs widgets on a board of near-square cells, each tile spanning 1×1 … 4×3 cells, placed
 /// first-fit in reading order. `fit` sizes the cells so a board fills the screen exactly, like a
-/// hardware deck: 6 × 4 cells in landscape and 4 × 7 in portrait. More rows than that scroll.
+/// hardware deck: 6 × 4 cells in landscape; 4 × 6 in portrait, or 4 × 7 when the board has that many
+/// rows. More rows than that scroll.
 struct DashboardGrid: Layout {
     var columns: Int
     var rowHeight: CGFloat
@@ -21,17 +22,22 @@ struct DashboardGrid: Layout {
         var columns = 1
         var frames: [CGRect] = []
         var height: CGFloat = 0
+        var rows = 0
     }
 
-    /// Columns and row height for a board shown in `size`.
-    static func fit(_ size: CGSize, spacing: CGFloat = Metrics.gutter) -> (columns: Int, rowHeight: CGFloat) {
+    /// Columns and row height for a board of tiles with these `spans`, shown in `size`.
+    static func fit(_ size: CGSize, spans: [TileSize] = [], spacing: CGFloat = Metrics.gutter) -> (columns: Int, rowHeight: CGFloat) {
         if size.width < 600 { // iPhone: two columns that scroll
             return (2, max(120, (size.width - spacing) / 2 * 0.95))
         }
         let landscape = size.width > size.height
-        let rows: CGFloat = landscape ? 4 : 7
+        let columns = landscape ? 6 : 4
+        var rows: CGFloat = landscape ? 4 : 6
+        if !landscape, DashboardGrid(columns: columns, rowHeight: 1).place(width: size.width, spans: spans).rows >= 7 {
+            rows = 7
+        }
         let height = ((size.height - (rows - 1) * spacing) / rows).rounded(.down)
-        return (landscape ? 6 : 4, max(120, height))
+        return (columns, max(120, height))
     }
 
     func place(width: CGFloat, spans: [TileSize]) -> Placement {
@@ -66,7 +72,8 @@ struct DashboardGrid: Layout {
                 height: CGFloat(h) * rowHeight + CGFloat(h - 1) * spacing))
         }
         let rows = occupied.count
-        return Placement(columns: cols, frames: frames, height: rows == 0 ? 0 : CGFloat(rows) * (rowHeight + spacing) - spacing)
+        return Placement(columns: cols, frames: frames,
+                         height: rows == 0 ? 0 : CGFloat(rows) * (rowHeight + spacing) - spacing, rows: rows)
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

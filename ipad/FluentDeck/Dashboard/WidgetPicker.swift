@@ -10,19 +10,18 @@ struct WidgetPicker: View {
     private var spec: PanelSpec? { PanelCatalog.spec(for: selected) }
 
     var body: some View {
-        DialogSheet(title: "Add widgets", fills: true) {
+        DialogSheet(title: "Add widgets", fills: true,
+                    cancel: DialogAction("Cancel") { app.overlays.dismissDialog() },
+                    confirm: DialogAction("Add", enabled: spec.map(isAvailable) ?? false) {
+                        if let spec { withAnimation(.snappy) { app.layout.add(spec, size: size) } }
+                        app.overlays.dismissDialog()
+                    }) {
             HStack(alignment: .top, spacing: 28) {
                 list
                     .frame(width: 230)
                 if let spec { detail(spec) }
             }
             .frame(maxHeight: .infinity)
-        } footer: {
-            DialogButton(title: "Add widget", accent: true, enabled: spec.map(isAvailable) ?? false) {
-                if let spec { withAnimation(.snappy) { app.layout.add(spec, size: size) } }
-                app.overlays.dismissDialog()
-            }
-            DialogButton(title: "Cancel") { app.overlays.dismissDialog() }
         }
     }
 
@@ -37,17 +36,15 @@ struct WidgetPicker: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: s.symbol).font(.system(size: 16)).frame(width: 22)
+                                .foregroundStyle(isAvailable(s) ? theme.accent : theme.textDisabled)
                             Text(s.title).font(AppFont.body)
                             Spacer(minLength: 0)
                         }
                         .foregroundStyle(isAvailable(s) ? theme.textPrimary : theme.textDisabled)
                         .padding(.horizontal, 12)
                         .frame(height: 44)
-                        .background(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous).fill(isSelected ? theme.controlFill : .clear))
-                        .overlay(alignment: .leading) {
-                            // NavigationView selection pill
-                            if isSelected { Capsule().fill(theme.accent).frame(width: 3, height: 16) }
-                        }
+                        // The selected row is a filled capsule, as in an iPadOS sidebar.
+                        .background(Capsule().fill(isSelected ? theme.controlFill : .clear))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

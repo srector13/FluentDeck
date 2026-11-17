@@ -27,11 +27,11 @@
 | **Reminders** | S ▴ / M ▴ / L ▴ | Open reminders from the iPad, with a tap to tick one off. Its drawer has the full list. Works without the PC. |
 | **Clock** | S / M / L | Large, light numerals. Runs on the iPad only. It's also the smallest example panel. |
 
-**▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a system sheet slides over the board with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
+**▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a card slides up from the bottom of the screen with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
 
 Calendar and Reminders read the iPad's own accounts through EventKit, so iOS asks for access the first time each is shown.
 
-You can set up any number of **boards**; each is a tab in the tab bar (like Stream Deck profiles). A board fills the screen: 6 × 4 cells in landscape, 4 × 7 in portrait, and it scrolls only if you add more than that. The toolbar holds **Add widgets** (+), **Customize** (pencil) and a **⋯** menu for renaming, reordering, adding and deleting boards. The PC's name on the left opens its connection menu. While customizing, modules jiggle as on the Home Screen: tap **−** to remove one, **⋯** for its size and options (e.g. which deck page to show), or drag to reorder.
+You can set up any number of **boards**; each is a tab in the tab bar (like Stream Deck profiles). A board fills the screen: 6 × 4 cells in landscape, 4 × 6 in portrait (4 × 7 if you add a seventh row), and it scrolls only if you add more than that. The toolbar holds **Add widgets** (+), **Customize** (pencil) and a **⋯** menu for renaming, reordering, adding and deleting boards. The PC's name on the left opens its connection menu. While customizing, modules jiggle as on the Home Screen: tap **−** to remove one, **⋯** for its size and options (e.g. which deck page to show), or drag to reorder.
 
 ## Quick start
 
@@ -187,14 +187,14 @@ To give a widget a drawer, add `drawer: { AnyView(AgentsDrawer(ctx: $0)) }` to i
 
 If a PC doesn't provide a topic yet, the picker shows that widget as unavailable, so older hosts degrade gracefully.
 
-Shared pieces live in `ipad/FluentDeck/Design/`: `PillButtonStyle`, `IconButton`, `PillSlider` / `RemoteSlider` (optimistic and throttled), `LevelBar`, `Spinner`, `RingGauge`, `Banner`, `StatusDot`, `TextBox`, `SegmentedBar`, `ActionMenu` (a system menu from a list of `ActionItem`s), `DialogSheet` and `DialogButton`, and the `Theme` tokens.
+Shared pieces live in `ipad/FluentDeck/Design/`: `PillButtonStyle`, `IconButton`, `PillSlider` / `RemoteSlider` (optimistic and throttled), `LevelBar`, `Spinner`, `RingGauge`, `Banner`, `StatusDot`, `TextBox`, `SegmentedBar`, `ActionMenu` (a system menu from a list of `ActionItem`s), `DialogSheet`, and the `Theme` tokens.
 
 ## Design notes
 
 - **Look:** iOS dark mode. The board is a Control Center-style grid: each widget sits on a translucent platter with large continuous corners, 14 pt apart, over a dark ground washed with the colours of the current cover art. Deck keys are circles that fill with the tint while on; sliders are capsules that fill from the left, with no thumb. Colours are the iOS dark system palette, mapped in `Design/Theme.swift`.
-- **System components:** boards are a `TabView`, so the tab bar is whatever the iPad's OS draws (floating at the top on iPadOS 18 and later, at the bottom before). The toolbar, menus, sheets, segmented controls, switches and activity indicators are the system's too. Drawers are sheets sized to their content.
+- **System components:** boards are a `TabView`, so the tab bar is whatever the iPad's OS draws (floating at the top on iPadOS 18 and later, at the bottom before). The toolbar, menus, sheets, segmented controls, switches and activity indicators are the system's too. Dialogs follow the iOS sheet layout: Cancel on the left, the main action on the right. Drawers are the one custom presentation: iPadOS centres its own sheets, so a drawer is a card that rises from the bottom edge, as tall as its content.
 - **Sizing for touch:** every control is at least 44 pt, sliders swell while you hold them, and deck keys respond to presses with scale and haptics.
-- **Grid:** `DashboardGrid` is a custom `Layout` that packs 1×1 to 4×3 tiles first-fit. `DashboardGrid.fit` sizes the cells so 6 × 4 of them (4 × 7 in portrait) fill the screen exactly.
+- **Grid:** `DashboardGrid` is a custom `Layout` that packs 1×1 to 4×3 tiles first-fit. `DashboardGrid.fit` sizes the cells so 6 × 4 of them fill the screen exactly in landscape, and 4 × 6 in portrait (4 × 7 once a board has a seventh row).
 
 ## Security model
 

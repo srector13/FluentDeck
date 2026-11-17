@@ -15,7 +15,9 @@ struct PairingDialog: View {
     var body: some View {
         ZStack {
             theme.smoke.ignoresSafeArea()
-            DialogSheet(title: "Pair with \(app.connection.hostName)") {
+            DialogSheet(title: "Pair with \(app.connection.hostName)",
+                        cancel: DialogAction("Cancel") { app.cancelConnect() },
+                        confirm: DialogAction("Pair", enabled: code.count == 6, perform: pair)) {
                 Text("On the PC, click the FluentDeck icon in the system tray and choose **Pair new device…**, then type the code it shows.")
                     .font(AppFont.body)
                     .foregroundStyle(theme.textSecondary)
@@ -30,9 +32,6 @@ struct PairingDialog: View {
                 if let reason {
                     Banner(severity: submitted ? .error : .informational, title: reason)
                 }
-            } footer: {
-                DialogButton(title: "Pair", accent: true, enabled: code.count == 6, action: pair)
-                DialogButton(title: "Cancel") { app.cancelConnect() }
             }
             .frame(maxWidth: 460)
             .background(RoundedRectangle(cornerRadius: Metrics.panelRadius, style: .continuous).fill(.regularMaterial))

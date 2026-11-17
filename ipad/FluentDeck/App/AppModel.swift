@@ -146,11 +146,10 @@ private struct RenameBoardDialog: View {
     @State private var name = ""
 
     var body: some View {
-        DialogSheet(title: "Rename board") {
+        DialogSheet(title: "Rename board",
+                    cancel: DialogAction("Cancel") { app.overlays.dismissDialog() },
+                    confirm: DialogAction("Save", enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty) { save() }) {
             TextBox(placeholder: "Board name", text: $name) { save() }
-        } footer: {
-            DialogButton(title: "Save", accent: true, enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty) { save() }
-            DialogButton(title: "Cancel") { app.overlays.dismissDialog() }
         }
         .onAppear { name = board.name }
     }

@@ -244,7 +244,9 @@ struct DeckKeyEditor: View {
     }
 
     var body: some View {
-        DialogSheet(title: buttonId == nil ? "Add key" : "Edit key", fills: true) {
+        DialogSheet(title: buttonId == nil ? "Add key" : "Edit key", fills: true,
+                    cancel: DialogAction("Cancel") { ctx.overlays.dismissDialog() },
+                    confirm: DialogAction("Save", enabled: loaded && !busy) { save() }) {
             if loaded {
                 HStack(alignment: .top, spacing: 28) {
                     side.frame(width: 150)
@@ -255,9 +257,6 @@ struct DeckKeyEditor: View {
             } else {
                 Spinner().frame(maxWidth: .infinity, minHeight: 200)
             }
-        } footer: {
-            DialogButton(title: "Save", accent: true, enabled: loaded && !busy) { save() }
-            DialogButton(title: "Cancel") { ctx.overlays.dismissDialog() }
         }
         .task { await load() }
         .onChange(of: photo) { _, item in
@@ -759,11 +758,10 @@ struct DeckPageRenameDialog: View {
     @State private var name = ""
 
     var body: some View {
-        DialogSheet(title: "Rename page") {
+        DialogSheet(title: "Rename page",
+                    cancel: DialogAction("Cancel") { ctx.overlays.dismissDialog() },
+                    confirm: DialogAction("Save", enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty) { save() }) {
             TextBox(placeholder: "Page name", text: $name) { save() }
-        } footer: {
-            DialogButton(title: "Save", accent: true, enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty) { save() }
-            DialogButton(title: "Cancel") { ctx.overlays.dismissDialog() }
         }
         .onAppear { name = page.title }
     }

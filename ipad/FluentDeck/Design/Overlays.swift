@@ -2,8 +2,9 @@ import SwiftUI
 import Observation
 
 // Menus and sheets are the system's own. This file describes them as data (so a panel can offer
-// a menu without drawing one) and owns the two sheets the app presents: a dialog, and the drawer
-// that slides up from a compact widget.
+// a menu without drawing one) and owns the two things the app presents over a board: a dialog in
+// a system sheet, and the drawer that slides up from the bottom edge with the rest of a compact
+// widget's controls.
 
 /// One row of a menu, or a divider or heading between rows.
 struct ActionItem: Identifiable {
@@ -117,7 +118,7 @@ final class OverlayCenter {
 
     /// The dialog on screen, if any. The root view presents it as a sheet.
     var dialog: Dialog?
-    /// The drawer on screen, if any. The root view presents it as a bottom sheet.
+    /// The drawer on screen, if any. The root view slides it up from the bottom edge.
     var drawer: Drawer?
 
     func present<V: View>(size: SheetSize = .fitted, @ViewBuilder _ content: () -> V) {
@@ -128,7 +129,7 @@ final class OverlayCenter {
         dialog = nil
     }
 
-    /// Slide a sheet up over the board with the rest of a widget's controls.
+    /// Slide a card up from the bottom of the board with the rest of a widget's controls.
     func openDrawer<V: View>(title: String, @ViewBuilder _ content: () -> V) {
         drawer = Drawer(title: title, content: AnyView(content()))
     }
@@ -139,15 +140,14 @@ final class OverlayCenter {
 }
 
 extension View {
-    /// Present the app's dialog and drawer as system sheets. `scope` re-applies the app's
-    /// environment, which a sheet's content needs as much as the screen beneath it.
+    /// Present the app's dialog as a system sheet and its drawer as a card that slides up from the
+    /// bottom edge. `scope` re-applies the app's environment, which both need as much as the
+    /// screen beneath them.
     func overlaySheets<Scoped: View>(_ overlays: OverlayCenter, scope: @escaping (AnyView) -> Scoped) -> some View {
         self
+            .overlay { scope(AnyView(DrawerLayer())) }
             .sheet(item: Binding(get: { overlays.dialog }, set: { overlays.dialog = $0 })) { dialog in
                 scope(AnyView(DialogHost(dialog: dialog)))
-            }
-            .sheet(item: Binding(get: { overlays.drawer }, set: { overlays.drawer = $0 })) { drawer in
-                scope(AnyView(DrawerHost(drawer: drawer)))
             }
     }
 
@@ -198,15 +198,66 @@ private struct DialogHost: View {
     }
 }
 
-/// The sheet that rises from a compact widget: the widget's name, a close button, and its full
-/// controls. The system provides the grabber and the drag to dismiss.
-private struct DrawerHost: View {
+// MARK: - Drawer
+
+/// Dims the board and holds the drawer at its bottom edge. Tapping outside the drawer closes it.
+private struct DrawerLayer: View {
+    @Environment(OverlayCenter.self) private var overlays
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            if let drawer = overlays.drawer {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { overlays.closeDrawer() }
+                    .accessibilityHidden(true)
+                    .transition(.opacity)
+                    .zIndex(0)
+                DrawerCard(drawer: drawer)
+                    .id(drawer.id)
+                    .transition(.move(edge: .bottom))
+                    .zIndex(1)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .ignoresSafeArea(edges: .bottom)
+        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: overlays.drawer?.id)
+    }
+}
+
+/// The drawer itself: a grabber, the widget's name, a close button, and the widget's full
+/// controls, on a card as tall as they need. Drag its top down to put it away.
+private struct DrawerCard: View {
     let drawer: OverlayCenter.Drawer
     @Environment(OverlayCenter.self) private var overlays
     @Environment(\.theme) private var theme
+    @State private var drag: CGFloat = 0
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 34, style: .continuous)
         VStack(alignment: .leading, spacing: 10) {
+            header
+            drawer.content
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 22)
+        .frame(maxWidth: 640)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(shape.fill(.regularMaterial))
+        .shadow(color: .black.opacity(0.35), radius: 30, y: 10)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+        .offset(y: drag)
+    }
+
+    private var header: some View {
+        VStack(spacing: 4) {
+            Capsule()
+                .fill(theme.textTertiary)
+                .frame(width: 36, height: 5)
+                .padding(.top, 8)
+                .accessibilityHidden(true)
             HStack {
                 Text(drawer.title).font(AppFont.subtitle).foregroundStyle(theme.textPrimary)
                 Spacer()
@@ -223,50 +274,86 @@ private struct DrawerHost: View {
                 .padding(.trailing, -7)
                 .accessibilityLabel("Close")
             }
-            drawer.content
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 22)
-        .padding(.bottom, 18)
-        .fittedSheet()
-        .presentationDragIndicator(.visible)
-        .presentationBackground(.regularMaterial)
-        .presentationCornerRadius(34)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 6)
+                .onChanged { drag = max(0, $0.translation.height) }
+                .onEnded { value in
+                    if value.translation.height > 90 || value.predictedEndTranslation.height > 260 {
+                        overlays.closeDrawer()
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { drag = 0 }
+                    }
+                })
     }
 }
 
-/// The layout of a dialog's sheet: a title, the content, and a row of equal-width buttons.
-struct DialogSheet<Content: View, Footer: View>: View {
+// MARK: - Dialog
+
+/// One of a dialog's two buttons.
+struct DialogAction {
     var title: String
-    /// Stretch the content to fill a page sheet, pinning the buttons to the bottom.
+    var enabled: Bool
+    var perform: () -> Void
+
+    init(_ title: String, enabled: Bool = true, perform: @escaping () -> Void) {
+        self.title = title
+        self.enabled = enabled
+        self.perform = perform
+    }
+}
+
+/// The layout of a dialog. A small one is a title, its content, and Cancel beside the main action.
+/// One that fills a page sheet has a bar across the top instead, in the manner of an iOS sheet:
+/// Cancel on the left, the title in the middle, the main action on the right.
+struct DialogSheet<Content: View>: View {
+    var title: String
+    /// Stretch the content to fill a page sheet under a top bar.
     var fills = false
+    var cancel: DialogAction
+    var confirm: DialogAction
     @ViewBuilder var content: () -> Content
-    @ViewBuilder var footer: () -> Footer
     @Environment(\.theme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(title).font(AppFont.subtitle).foregroundStyle(theme.textPrimary)
-            VStack(alignment: .leading, spacing: 14) { content() }
-                .frame(maxWidth: .infinity, maxHeight: fills ? .infinity : nil, alignment: .topLeading)
-            HStack(spacing: 10) { footer() }
+        if fills {
+            VStack(spacing: 0) {
+                ZStack {
+                    Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(theme.textPrimary)
+                    HStack {
+                        Button(cancel.title, action: cancel.perform)
+                            .buttonStyle(PillButtonStyle())
+                        Spacer()
+                        Button(confirm.title, action: confirm.perform)
+                            .buttonStyle(PillButtonStyle(kind: .accent))
+                            .disabled(!confirm.enabled)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 16)
+                VStack(alignment: .leading, spacing: 14) { content() }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 18) {
+                Text(title).font(AppFont.subtitle).foregroundStyle(theme.textPrimary)
+                VStack(alignment: .leading, spacing: 14) { content() }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                HStack(spacing: 10) {
+                    Button(action: cancel.perform) { Text(cancel.title).frame(maxWidth: .infinity) }
+                        .buttonStyle(PillButtonStyle(fill: true))
+                    Button(action: confirm.perform) { Text(confirm.title).frame(maxWidth: .infinity) }
+                        .buttonStyle(PillButtonStyle(kind: .accent, fill: true))
+                        .disabled(!confirm.enabled)
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// Footer button for a dialog (fills its share of the row).
-struct DialogButton: View {
-    var title: String
-    var accent = false
-    var enabled = true
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) { Text(title).frame(maxWidth: .infinity) }
-            .buttonStyle(PillButtonStyle(kind: accent ? .accent : .standard, fill: true))
-            .disabled(!enabled)
     }
 }
 
