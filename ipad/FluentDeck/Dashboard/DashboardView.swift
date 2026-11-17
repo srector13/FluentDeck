@@ -195,30 +195,38 @@ private struct BoardView: View {
             }
 
             GeometryReader { geo in
-                let fit = DashboardGrid.fit(geo.size, spans: board.tiles.map(\.size))
-                ScrollView {
-                    if board.tiles.isEmpty {
-                        EmptyBoard { app.showWidgetPicker() }
-                            .padding(.top, 80)
-                    } else {
-                        DashboardGrid(columns: fit.columns, rowHeight: fit.rowHeight) {
-                            ForEach(board.tiles) { tile in
-                                tileView(tile)
-                                    .tileSize(tile.size)
-                            }
-                        }
-                        .animation(.snappy(duration: 0.3), value: board.tiles)
-                    }
+                let spans = board.tiles.map(\.size)
+                let fit = DashboardGrid.fit(geo.size, spans: spans)
+                let height = DashboardGrid(columns: fit.columns, rowHeight: fit.rowHeight).place(width: geo.size.width, spans: spans).height
+                if board.tiles.isEmpty {
+                    EmptyBoard { app.showWidgetPicker() }
+                        .padding(.top, 80)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                } else if height > geo.size.height + 1 {
+                    // Only a board with more rows than the screen scrolls: a scroll view would
+                    // otherwise claim sideways drags meant for swiping between boards.
+                    ScrollView { grid(fit) }
+                        .scrollIndicators(.hidden)
+                        .scrollClipDisabled()
+                } else {
+                    grid(fit).frame(maxHeight: .infinity, alignment: .top)
                 }
-                .scrollIndicators(.hidden)
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollClipDisabled()
             }
         }
         .padding(.horizontal, Metrics.margin)
         .padding(.top, 6)
         .padding(.bottom, 12)
         .animation(.snappy, value: app.connection.phase)
+    }
+
+    private func grid(_ fit: (columns: Int, rowHeight: CGFloat)) -> some View {
+        DashboardGrid(columns: fit.columns, rowHeight: fit.rowHeight) {
+            ForEach(board.tiles) { tile in
+                tileView(tile)
+                    .tileSize(tile.size)
+            }
+        }
+        .animation(.snappy(duration: 0.3), value: board.tiles)
     }
 
     @ViewBuilder

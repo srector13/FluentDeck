@@ -179,7 +179,11 @@ final class ScreenshotTests: XCTestCase {
         // 22. Swiping sideways moves to the next board (Home → Dev), even starting on a deck key.
         launch(app, connected(board: 0), orientation: .landscapeLeft)
         waitForDashboard(app)
-        app.swipeLeft()
+        // A drag from the right of the deck to the left edge, as a finger would (app.swipeLeft()
+        // is too quick and short to rely on in landscape).
+        let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+        let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5))
+        from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .fast, thenHoldForDuration: 0)
         XCTAssertTrue(app.buttons["VS Code"].firstMatch.waitForExistence(timeout: 5), "Swiping left didn't show the Dev board")
         sleep(1)
         shot("22-swiped-to-dev")
