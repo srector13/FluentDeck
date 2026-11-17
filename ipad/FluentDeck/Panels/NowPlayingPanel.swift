@@ -16,7 +16,7 @@ struct NowPlayingPanel: View {
         drawerSizes: [.medium],
         view: { AnyView(NowPlayingPanel(ctx: $0)) })
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let m = ctx.state("media", as: MediaState.self), m.hasSession {
@@ -39,8 +39,8 @@ struct NowPlayingPanel: View {
             HStack(alignment: .top, spacing: 14) {
                 Artwork(path: m.artwork).frame(width: 96, height: 96)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(m.title ?? "Unknown title").font(FluentFont.bodyLarge.weight(.semibold)).lineLimit(2)
-                    Text(m.artist ?? "").font(FluentFont.body).foregroundStyle(theme.textSecondary).lineLimit(1)
+                    Text(m.title ?? "Unknown title").font(AppFont.bodyLarge.weight(.semibold)).lineLimit(2)
+                    Text(m.artist ?? "").font(AppFont.body).foregroundStyle(theme.textSecondary).lineLimit(1)
                     SourcePicker(ctx: ctx, media: m).padding(.top, 4)
                 }
                 .foregroundStyle(theme.textPrimary)
@@ -51,24 +51,22 @@ struct NowPlayingPanel: View {
         }
     }
 
-    /// The Windows media flyout, stood upright: source, cover, title, scrubber, transport.
-    /// The cover throws its colours onto the black around it.
+    /// Control Center's media module, stood upright: source, cover, title, scrubber, transport.
     private func tall(_ m: MediaState) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             SourcePicker(ctx: ctx, media: m)
-            Artwork(path: m.artwork, radius: Fluent.artRadius, glow: true)
+            Artwork(path: m.artwork, radius: Metrics.artRadius)
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(.top, 6)
-                .zIndex(-1) // its glow falls behind the text above and below
+                .padding(.top, 8)
             Text(m.title ?? "Unknown title")
-                .font(FluentFont.subtitle)
+                .font(AppFont.subtitle)
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .padding(.top, 14)
             Text(m.artist ?? "")
-                .font(FluentFont.body)
+                .font(AppFont.body)
                 .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
                 .padding(.top, 2)
@@ -82,8 +80,8 @@ struct NowPlayingPanel: View {
         HStack(spacing: 14) {
             Artwork(path: m.artwork).aspectRatio(1, contentMode: .fit).frame(maxHeight: .infinity)
             VStack(alignment: .leading, spacing: 2) {
-                Text(m.title ?? "Unknown title").font(FluentFont.bodyStrong).lineLimit(1)
-                Text(m.artist ?? "").font(FluentFont.caption).foregroundStyle(theme.textSecondary).lineLimit(1)
+                Text(m.title ?? "Unknown title").font(AppFont.bodyStrong).lineLimit(1)
+                Text(m.artist ?? "").font(AppFont.caption).foregroundStyle(theme.textSecondary).lineLimit(1)
                 Spacer(minLength: 4)
                 TransportRow(ctx: ctx, media: m, prominent: false)
             }
@@ -96,9 +94,9 @@ struct NowPlayingPanel: View {
             Artwork(path: m.artwork).aspectRatio(1, contentMode: .fit).frame(maxHeight: .infinity)
             VStack(alignment: .leading, spacing: 4) {
                 SourcePicker(ctx: ctx, media: m)
-                Text(m.title ?? "Unknown title").font(FluentFont.title).lineLimit(2).minimumScaleFactor(0.7)
+                Text(m.title ?? "Unknown title").font(AppFont.title).lineLimit(2).minimumScaleFactor(0.7)
                 Text([m.artist, m.album].compactMap { $0 }.joined(separator: " — "))
-                    .font(FluentFont.bodyLarge).foregroundStyle(theme.textSecondary).lineLimit(1)
+                    .font(AppFont.bodyLarge).foregroundStyle(theme.textSecondary).lineLimit(1)
                 Spacer(minLength: 8)
                 Scrubber(ctx: ctx, media: m)
                 TransportRow(ctx: ctx, media: m, prominent: true)
@@ -111,22 +109,22 @@ struct NowPlayingPanel: View {
 /// The compact player's drawer: large cover, source, scrubber and the full transport.
 struct NowPlayingDrawer: View {
     let ctx: PanelContext
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let m = ctx.state("media", as: MediaState.self), m.hasSession {
             HStack(alignment: .top, spacing: 28) {
-                Artwork(path: m.artwork, radius: Fluent.artRadius)
+                Artwork(path: m.artwork, radius: Metrics.artRadius)
                     .frame(width: 220, height: 220)
                 VStack(alignment: .leading, spacing: 4) {
                     SourcePicker(ctx: ctx, media: m)
                     Text(m.title ?? "Unknown title")
-                        .font(FluentFont.title)
+                        .font(AppFont.title)
                         .foregroundStyle(theme.textPrimary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.7)
                     Text([m.artist, m.album].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " — "))
-                        .font(FluentFont.bodyLarge)
+                        .font(AppFont.bodyLarge)
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                     Spacer(minLength: 8)
@@ -144,10 +142,8 @@ struct NowPlayingDrawer: View {
 
 private struct Artwork: View {
     let path: String?
-    var radius: CGFloat = 14
-    /// A soft halo of the cover's own colours behind it.
-    var glow = false
-    @Environment(\.fluent) private var theme
+    var radius: CGFloat = 12
+    @Environment(\.theme) private var theme
 
     var body: some View {
         RemoteImage(path: path) {
@@ -157,15 +153,7 @@ private struct Artwork: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .background {
-            if glow, path != nil {
-                RemoteImage(path: path)
-                    .blur(radius: 48)
-                    .saturation(1.3)
-                    .opacity(0.5)
-                    .allowsHitTesting(false)
-            }
-        }
+        .shadow(color: .black.opacity(0.35), radius: 14, y: 8)
     }
 }
 
@@ -173,25 +161,26 @@ private struct Artwork: View {
 private struct SourcePicker: View {
     let ctx: PanelContext
     let media: MediaState
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        FlyoutButton(width: 280, items: {
-            [FlyoutItem.header("Playing on the PC")] + media.sessions.map { s in
-                FlyoutItem.action(s.name, checked: s.appId == media.source?.appId) {
+        ActionMenu(items: {
+            [ActionItem.header("Playing on the PC")] + media.sessions.map { s in
+                ActionItem.action(s.name, checked: s.appId == media.source?.appId) {
                     ctx.run("media", "selectSession", ["appId": .string(s.appId)])
                 }
             }
         }) {
             HStack(spacing: 6) {
                 Image(systemName: "waveform").font(.system(size: 12))
-                Text(media.source?.name ?? "Media").font(FluentFont.caption).lineLimit(1)
-                if media.sessions.count > 1 { Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)) }
+                Text(media.source?.name ?? "Media").font(AppFont.caption).lineLimit(1)
+                if media.sessions.count > 1 { Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)) }
             }
             .foregroundStyle(theme.textSecondary)
+            .frame(minHeight: 28)
+            .contentShape(Rectangle())
         }
         .disabled(media.sessions.count < 2)
-        .padding(.leading, -8)
     }
 }
 
@@ -199,7 +188,7 @@ private struct SourcePicker: View {
 private struct Scrubber: View {
     let ctx: PanelContext
     let media: MediaState
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
     @State private var scrub: Double?
 
     var body: some View {
@@ -208,10 +197,11 @@ private struct Scrubber: View {
             let live = media.isPlaying ? media.position + timeline.date.timeIntervalSince(received) : media.position
             let position = min(max(scrub ?? live, 0), max(media.duration, 0))
             VStack(spacing: 0) {
-                FluentSlider(
+                PillSlider(
                     value: Binding(get: { position }, set: { scrub = $0 }),
                     range: 0...max(media.duration, 1),
                     enabled: media.canSeek,
+                    thickness: 7,
                     onEditingChanged: { editing in
                         guard !editing, let target = scrub else { return }
                         ctx.run("media", "seek", ["seconds": .number(target)])
@@ -220,16 +210,15 @@ private struct Scrubber: View {
                             scrub = nil
                         }
                     })
-                    .padding(.horizontal, -12) // the rail, not the thumb's travel, spans the widget
                 HStack {
                     Text(Self.format(position))
                     Spacer()
                     Text(media.duration > 0 ? "-" + Self.format(media.duration - position) : "")
                 }
-                .font(FluentFont.caption)
+                .font(AppFont.caption)
                 .monospacedDigit()
                 .foregroundStyle(theme.textSecondary)
-                .offset(y: -6)
+                .offset(y: -8)
             }
         }
     }
@@ -244,26 +233,26 @@ private struct TransportRow: View {
     let ctx: PanelContext
     let media: MediaState?
     var prominent: Bool
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         let m = media
         HStack(spacing: prominent ? 10 : 2) {
             if prominent, m?.canShuffle == true {
-                FluentIconButton(symbol: "shuffle", size: 15, tint: m?.shuffle == true ? theme.accent : theme.textSecondary, label: "Shuffle") {
+                IconButton(symbol: "shuffle", size: 15, tint: m?.shuffle == true ? theme.accent : theme.textSecondary, label: "Shuffle") {
                     ctx.run("media", "shuffle", ["on": .bool(!(m?.shuffle ?? false))])
                 }
             }
             if prominent { Spacer(minLength: 0) }
-            FluentIconButton(symbol: "backward.fill", size: prominent ? 19 : 15, label: "Previous") { ctx.run("media", "previous") }
+            IconButton(symbol: "backward.fill", size: prominent ? 19 : 15, label: "Previous") { ctx.run("media", "previous") }
                 .disabled(m != nil && m?.canPrevious == false)
             PlayPauseButton(playing: m?.isPlaying ?? false, prominent: prominent) { ctx.run("media", "playPause") }
-            FluentIconButton(symbol: "forward.fill", size: prominent ? 19 : 15, label: "Next") { ctx.run("media", "next") }
+            IconButton(symbol: "forward.fill", size: prominent ? 19 : 15, label: "Next") { ctx.run("media", "next") }
                 .disabled(m != nil && m?.canNext == false)
             if prominent { Spacer(minLength: 0) }
             if prominent, m?.canRepeat == true {
                 let mode = m?.`repeat` ?? "none"
-                FluentIconButton(symbol: mode == "track" ? "repeat.1" : "repeat", size: 15,
+                IconButton(symbol: mode == "track" ? "repeat.1" : "repeat", size: 15,
                                  tint: mode == "none" ? theme.textSecondary : theme.accent, label: "Repeat") {
                     ctx.run("media", "repeat")
                 }
@@ -278,7 +267,7 @@ private struct PlayPauseButton: View {
     let playing: Bool
     let prominent: Bool
     let action: () -> Void
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button(action: action) {
@@ -287,22 +276,22 @@ private struct PlayPauseButton: View {
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: prominent ? 56 : 40, height: prominent ? 56 : 40)
         }
-        .buttonStyle(CircleAccentStyle())
+        .buttonStyle(CircleFillStyle())
         .accessibilityLabel(playing ? "Pause" : "Play")
     }
 }
 
-private struct CircleAccentStyle: ButtonStyle {
+/// The play button: a white disc with a dark glyph, as in the iOS players.
+private struct CircleFillStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { CircleBody(configuration: configuration) }
 
     struct CircleBody: View {
         let configuration: ButtonStyleConfiguration
-        @Environment(\.fluent) private var theme
+        @Environment(\.theme) private var theme
         var body: some View {
             configuration.label
-                .foregroundStyle(theme.textOnAccent)
-                .background(Circle().fill(configuration.isPressed ? theme.accentTertiary : theme.accent))
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+                .foregroundStyle(.black)
+                .background(Circle().fill(.white.opacity(configuration.isPressed ? 0.75 : 1)))
                 .scaleEffect(configuration.isPressed ? 0.94 : 1)
                 .animation(.snappy(duration: 0.12), value: configuration.isPressed)
         }

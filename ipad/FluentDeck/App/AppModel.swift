@@ -52,11 +52,8 @@ final class AppModel {
 
     // MARK: theme
 
-    /// Always dark, on true black. The accent is the PC's own once connected.
-    var theme: FluentTheme {
-        let pc = connection.store.box("theme").decoded(ThemeState.self)
-        return FluentTheme(isDark: true, palette: pc.map { AccentPalette($0) } ?? .windowsBlue)
-    }
+    /// iOS dark mode with the system blue tint.
+    var theme: Theme { .default }
 
     // MARK: hosts
 
@@ -135,7 +132,7 @@ final class AppModel {
     }
 
     func showWidgetPicker() {
-        overlays.present { WidgetPicker() }
+        overlays.present(size: .page) { WidgetPicker() }
     }
 
     func promptRename(_ board: Board) {
@@ -149,8 +146,8 @@ private struct RenameBoardDialog: View {
     @State private var name = ""
 
     var body: some View {
-        ContentDialog(title: "Rename board") {
-            FluentTextBox(placeholder: "Board name", text: $name) { save() }
+        DialogSheet(title: "Rename board") {
+            TextBox(placeholder: "Board name", text: $name) { save() }
         } footer: {
             DialogButton(title: "Save", accent: true, enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty) { save() }
             DialogButton(title: "Cancel") { app.overlays.dismissDialog() }

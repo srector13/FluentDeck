@@ -1,46 +1,31 @@
 import SwiftUI
 
-/// WinUI Slider: a faint rail, accent fill, and the signature thumb — a solid disc with an accent dot
-/// that grows while you hold it. Drag anywhere on the track (44 pt tall touch area).
-struct FluentSlider: View {
+/// A Control Center slider: a capsule that fills from the left, with no thumb. Drag or tap anywhere
+/// on it (the touch area is 44 pt tall whatever the bar's thickness). It swells a little while held.
+struct PillSlider: View {
     @Binding var value: Double
     var range: ClosedRange<Double> = 0...1
     var enabled = true
+    /// Height of the bar at rest: thick for volume, thin for a scrubber.
+    var thickness: CGFloat = 28
     var onEditingChanged: (Bool) -> Void = { _ in }
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
     @State private var dragging = false
-
-    private let thumb: CGFloat = 24
-    private let track: CGFloat = 4
 
     var body: some View {
         GeometryReader { g in
-            let width = max(g.size.width - thumb, 1)
+            let width = max(g.size.width, 1)
             let span = max(range.upperBound - range.lowerBound, .ulpOfOne)
             let fraction = min(max((value - range.lowerBound) / span, 0), 1)
-            let x = thumb / 2 + width * fraction
 
             ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(theme.controlStrongFill.opacity(0.32))
-                    .frame(height: track)
-                    .padding(.horizontal, thumb / 2)
-                Capsule()
-                    .fill(enabled ? theme.accent : theme.textDisabled)
-                    .frame(width: max(x - thumb / 2, 0), height: track)
-                    .padding(.leading, thumb / 2)
-                ZStack {
-                    Circle()
-                        .fill(theme.controlSolidFill)
-                        .shadow(color: .black.opacity(theme.isDark ? 0.3 : 0.12), radius: 2, y: 1)
-                    Circle()
-                        .fill(enabled ? theme.accent : theme.textDisabled)
-                        .frame(width: dragging ? 14 : 11, height: dragging ? 14 : 11)
-                }
-                .frame(width: thumb, height: thumb)
-                .offset(x: x - thumb / 2)
+                theme.controlFill
+                (enabled ? Color.white : theme.textDisabled)
+                    .frame(width: width * fraction)
             }
+            .frame(height: dragging ? thickness + min(6, thickness * 0.5) : thickness)
+            .clipShape(Capsule())
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
             .gesture(
@@ -48,7 +33,7 @@ struct FluentSlider: View {
                     .onChanged { drag in
                         guard enabled else { return }
                         if !dragging { dragging = true; onEditingChanged(true) }
-                        let f = min(max((drag.location.x - thumb / 2) / width, 0), 1)
+                        let f = min(max(drag.location.x / width, 0), 1)
                         value = range.lowerBound + f * span
                     }
                     .onEnded { _ in
@@ -57,9 +42,9 @@ struct FluentSlider: View {
                         onEditingChanged(false)
                     }
             )
-            .animation(.snappy(duration: 0.12), value: dragging)
+            .animation(.snappy(duration: 0.15), value: dragging)
         }
-        .frame(height: Fluent.touchTarget)
+        .frame(height: Metrics.touchTarget)
         .accessibilityElement()
         .accessibilityValue(Text("\(Int(((value - range.lowerBound) / max(range.upperBound - range.lowerBound, .ulpOfOne)) * 100)) percent"))
         .accessibilityAdjustableAction { direction in
@@ -112,6 +97,7 @@ struct RemoteSlider: View {
     let remote: Double
     var range: ClosedRange<Double> = 0...1
     var enabled = true
+    var thickness: CGFloat = 28
     let send: (Double) -> Void
     var commit: ((Double) -> Void)? = nil
 
@@ -120,7 +106,7 @@ struct RemoteSlider: View {
     @State private var releaseTask: Task<Void, Never>?
 
     var body: some View {
-        FluentSlider(
+        PillSlider(
             value: Binding(
                 get: { local ?? remote },
                 set: { v in
@@ -129,6 +115,7 @@ struct RemoteSlider: View {
                 }),
             range: range,
             enabled: enabled,
+            thickness: thickness,
             onEditingChanged: { editing in
                 releaseTask?.cancel()
                 if editing { return }

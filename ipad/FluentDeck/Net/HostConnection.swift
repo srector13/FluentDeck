@@ -34,7 +34,7 @@ final class HostConnection {
     private(set) var hostName = ""
     private(set) var hostId: String?
     private(set) var panels: [PanelDescriptor] = []
-    /// Last action error, shown briefly as an InfoBar toast.
+    /// Last action error, shown briefly as an Banner toast.
     var toast: String?
 
     /// Called after a successful welcome with the endpoint (now carrying its hostId).

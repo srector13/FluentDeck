@@ -1,11 +1,13 @@
 import Foundation
 import Observation
 
-/// A board is one page of widgets (like Stream Deck profiles). Boards are tabs in the SelectorBar.
+/// A board is one page of widgets (like Stream Deck profiles). Boards are tabs in the SegmentedBar.
 struct Board: Codable, Identifiable, Hashable {
     var id = UUID()
     var name: String
     var tiles: [TileInstance]
+    /// SF Symbol shown with the board's name in the tab bar.
+    var symbol: String?
 }
 
 /// Persists boards and widget placement in UserDefaults.
@@ -36,7 +38,7 @@ final class LayoutStore {
                 TileInstance(kind: ClockPanel.spec.kind, size: .medium),
                 TileInstance(kind: VolumeMixerPanel.spec.kind, size: .medium),
                 TileInstance(kind: CalendarPanel.spec.kind, size: .medium),
-            ])
+            ], symbol: "house.fill")
             let dev = Board(name: "Dev", tiles: [
                 TileInstance(kind: DeckPanel.spec.kind, size: .huge, config: ["page": "dev"]),
                 TileInstance(kind: VolumeMixerPanel.spec.kind, size: .large),
@@ -44,7 +46,7 @@ final class LayoutStore {
                 TileInstance(kind: ClockPanel.spec.kind, size: .medium),
                 TileInstance(kind: RemindersPanel.spec.kind, size: .medium),
                 TileInstance(kind: SystemPanel.spec.kind, size: .medium),
-            ])
+            ], symbol: "hammer.fill")
             boards = [home, dev]
             selectedBoardID = home.id
         }
@@ -97,7 +99,7 @@ final class LayoutStore {
     func addBoard() {
         var n = boards.count + 1
         while boards.contains(where: { $0.name == "Board \(n)" }) { n += 1 }
-        let board = Board(name: "Board \(n)", tiles: [])
+        let board = Board(name: "Board \(n)", tiles: [], symbol: "square.grid.2x2.fill")
         boards.append(board)
         selectedBoardID = board.id
     }

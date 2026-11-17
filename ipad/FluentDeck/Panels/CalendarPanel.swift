@@ -15,7 +15,7 @@ struct CalendarPanel: View {
         view: { AnyView(CalendarPanel(ctx: $0)) })
 
     @Environment(PlannerStore.self) private var planner
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         switch planner.calendarAccess {
@@ -43,18 +43,23 @@ struct CalendarPanel: View {
             VStack(alignment: .leading, spacing: 4) {
                 Capsule().fill(next.color).frame(width: 28, height: 4)
                 Text(next.allDay ? "All day" : (next.start <= now ? "Now" : PlannerFormat.time(next.start)))
-                    .font(FluentFont.subtitle)
+                    .font(AppFont.subtitle)
                     .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(next.title)
-                    .font(FluentFont.body)
+                    .font(AppFont.body)
                     .foregroundStyle(theme.textSecondary)
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
+                // The day in red capitals, as the iOS calendar widget heads its list.
+                Text(now, format: .dateTime.weekday(.wide).day())
+                    .textCase(.uppercase)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(theme.critical)
                 ForEach(upcoming.prefix(ctx.size == .large ? 6 : 2)) { event in
                     PlannerEventRow(event: event, now: now)
                 }
@@ -68,7 +73,7 @@ struct CalendarPanel: View {
 struct CalendarDrawer: View {
     let ctx: PanelContext
     @Environment(PlannerStore.self) private var planner
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     private struct Day: Identifiable {
         var id: Date
@@ -89,7 +94,7 @@ struct CalendarDrawer: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(days) { day in
                             Text(PlannerFormat.day(day.id, now: now))
-                                .font(FluentFont.caption.weight(.semibold))
+                                .font(AppFont.caption.weight(.semibold))
                                 .foregroundStyle(theme.textSecondary)
                                 .padding(.top, 6)
                             ForEach(day.events) { event in
@@ -117,18 +122,18 @@ struct PlannerEventRow: View {
     let event: PlannerEvent
     let now: Date
     var underDayHeading = false
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
             Capsule().fill(event.color).frame(width: 4, height: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.title)
-                    .font(FluentFont.bodyStrong)
+                    .font(AppFont.bodyStrong)
                     .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                 Text(detail)
-                    .font(FluentFont.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(theme.textSecondary)
                     .lineLimit(1)
             }
@@ -151,19 +156,19 @@ struct PlannerPrompt: View {
     let text: String
     let button: String
     let action: () -> Void
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: symbol).font(.system(size: 22, weight: .light)).foregroundStyle(theme.textTertiary)
             Text(text)
-                .font(FluentFont.caption)
+                .font(AppFont.caption)
                 .foregroundStyle(theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .minimumScaleFactor(0.8)
             Button(button, action: action)
-                .buttonStyle(FluentButtonStyle(kind: .standard, compact: true))
+                .buttonStyle(PillButtonStyle(kind: .standard, compact: true))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

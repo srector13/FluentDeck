@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The volume half of quick settings: output device, master, mic, and per-app volume with real app icons.
+/// Volume, as Control Center sliders: output device, master, mic, and per-app volume with real app icons.
 /// The compact sizes show the output and the microphone; their drawer has every app.
 struct VolumeMixerPanel: View {
     let ctx: PanelContext
@@ -17,7 +17,7 @@ struct VolumeMixerPanel: View {
         drawerSizes: [.small, .medium],
         view: { AnyView(VolumeMixerPanel(ctx: $0)) })
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let a = ctx.state("audio", as: AudioState.self) {
@@ -31,21 +31,21 @@ struct VolumeMixerPanel: View {
         VStack(spacing: 6) {
             if let out = a.output {
                 Text("\(Int((out.volume * 100).rounded()))")
-                    .font(FluentFont.titleLarge)
+                    .font(AppFont.titleLarge)
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .foregroundStyle(out.muted ? theme.textTertiary : theme.textPrimary)
                 HStack(spacing: 4) {
-                    FluentIconButton(symbol: "minus", size: 15, label: "Volume down") { ctx.run("audio", "setVolume", ["volume": .number(max(0, out.volume - 0.05))]) }
-                    FluentIconButton(symbol: Self.speakerSymbol(out), size: 15, tint: out.muted ? theme.critical : nil, label: "Mute") { ctx.run("audio", "toggleMute") }
-                    FluentIconButton(symbol: "plus", size: 15, label: "Volume up") { ctx.run("audio", "setVolume", ["volume": .number(min(1, out.volume + 0.05))]) }
+                    IconButton(symbol: "minus", size: 15, label: "Volume down") { ctx.run("audio", "setVolume", ["volume": .number(max(0, out.volume - 0.05))]) }
+                    IconButton(symbol: Self.speakerSymbol(out), size: 15, tint: out.muted ? theme.critical : nil, label: "Mute") { ctx.run("audio", "toggleMute") }
+                    IconButton(symbol: "plus", size: 15, label: "Volume up") { ctx.run("audio", "setVolume", ["volume": .number(min(1, out.volume + 0.05))]) }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Quick settings sliders: the output device (its name opens the picker), the microphone, then each app.
+    /// The slider rows: the output device (its name opens the picker), the microphone, then each app.
     /// Wide panels lay the rows out two across. The medium size stops after the microphone.
     private func full(_ a: AudioState) -> some View {
         let twoUp = ctx.size == .wide || ctx.size == .banner
@@ -74,7 +74,7 @@ private struct MixerRows: View {
     let audio: AudioState
     var apps = true
     var columns = 1
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     /// Height of one row, for views that size themselves to the rows.
     static let rowHeight: CGFloat = 54
@@ -90,15 +90,15 @@ private struct MixerRows: View {
                           onMute: { ctx.run("audio", "toggleMute") },
                           onVolume: { v in ctx.send("audio", "setVolume", ["volume": .number(v)]) },
                           menu: {
-                              [FlyoutItem.header("Sound output")] + audio.devices.map { d in
-                                  FlyoutItem.action(d.name, checked: d.isDefault) {
+                              [ActionItem.header("Sound output")] + audio.devices.map { d in
+                                  ActionItem.action(d.name, checked: d.isDefault) {
                                       ctx.run("audio", "setDefaultDevice", ["id": .string(d.id)])
                                   }
                               }
                           })
             } else {
-                Text("No output device").font(FluentFont.caption).foregroundStyle(theme.textTertiary)
-                    .frame(maxWidth: .infinity, minHeight: Fluent.touchTarget, alignment: .leading)
+                Text("No output device").font(AppFont.caption).foregroundStyle(theme.textTertiary)
+                    .frame(maxWidth: .infinity, minHeight: Metrics.touchTarget, alignment: .leading)
             }
             if let mic = audio.input {
                 VolumeRow(symbol: mic.muted ? "mic.slash" : "mic", icon: nil, title: mic.name, volume: mic.volume, muted: mic.muted,
@@ -145,10 +145,8 @@ private struct VolumeRow: View {
     let onMute: () -> Void
     let onVolume: (Double) -> Void
     /// When set, the title opens this menu (the output device picker).
-    var menu: (() -> [FlyoutItem])? = nil
-    @Environment(\.fluent) private var theme
-    @Environment(OverlayCenter.self) private var overlays
-    @State private var titleFrame: CGRect = .zero
+    var menu: (() -> [ActionItem])? = nil
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(spacing: 6) {
@@ -171,36 +169,34 @@ private struct VolumeRow: View {
                 .foregroundStyle(muted ? theme.critical : theme.textPrimary)
                 .frame(width: 28, height: 40)
             }
-            .buttonStyle(FluentButtonStyle(kind: .subtle, compact: true))
+            .buttonStyle(PillButtonStyle(kind: .subtle, compact: true))
             .accessibilityLabel(muted ? "Unmute \(title)" : "Mute \(title)")
 
-            VStack(alignment: .leading, spacing: -8) {
+            VStack(alignment: .leading, spacing: -5) {
                 if let menu {
-                    Button { overlays.showFlyout(anchor: titleFrame, items: menu(), width: 340) } label: {
+                    ActionMenu(items: menu) {
                         HStack(spacing: 5) {
                             Text(title).lineLimit(1)
-                            Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
                         }
                         .font(.system(size: 12))
                         .foregroundStyle(theme.textSecondary)
-                        .padding(.leading, 12)
+                        .padding(.leading, 2)
                         .padding(.vertical, 10) // a taller touch target than the text
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                    .readFrame($titleFrame)
                     .padding(.vertical, -10)
                     .zIndex(1)
                     .accessibilityLabel("Sound output: \(title)")
                 } else {
                     Text(title).font(.system(size: 12)).foregroundStyle(theme.textSecondary).lineLimit(1)
-                        .padding(.leading, 12)
+                        .padding(.leading, 2)
                 }
                 RemoteSlider(remote: volume, send: onVolume)
             }
 
             Text("\(Int((volume * 100).rounded()))")
-                .font(FluentFont.body)
+                .font(AppFont.body)
                 .monospacedDigit()
                 .foregroundStyle(muted ? theme.textTertiary : theme.textPrimary)
                 .frame(width: 34, alignment: .trailing)

@@ -15,7 +15,7 @@ extension View {
 struct DashboardGrid: Layout {
     var columns: Int
     var rowHeight: CGFloat
-    var spacing: CGFloat = Fluent.gutter
+    var spacing: CGFloat = Metrics.gutter
 
     struct Placement {
         var columns = 1
@@ -24,7 +24,7 @@ struct DashboardGrid: Layout {
     }
 
     /// Columns and row height for a board shown in `size`.
-    static func fit(_ size: CGSize, spacing: CGFloat = Fluent.gutter) -> (columns: Int, rowHeight: CGFloat) {
+    static func fit(_ size: CGSize, spacing: CGFloat = Metrics.gutter) -> (columns: Int, rowHeight: CGFloat) {
         if size.width < 600 { // iPhone: two columns that scroll
             return (2, max(120, (size.width - spacing) / 2 * 0.95))
         }

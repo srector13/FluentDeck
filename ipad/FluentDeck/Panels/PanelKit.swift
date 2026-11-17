@@ -100,7 +100,7 @@ struct PanelSpec: Identifiable {
     let defaultSize: TileSize
     var defaultConfig: [String: String] = [:]
     /// Extra items for the widget's ⋯ menu.
-    var menu: @MainActor (PanelContext) -> [FlyoutItem] = { _ in [] }
+    var menu: @MainActor (PanelContext) -> [ActionItem] = { _ in [] }
     /// Optional layer behind the widget's content. It isn't clipped, so it can spill onto the board.
     var background: (@MainActor (PanelContext) -> AnyView)? = nil
     /// Stays interactive while the board is customized, to edit its own content (the deck's keys).

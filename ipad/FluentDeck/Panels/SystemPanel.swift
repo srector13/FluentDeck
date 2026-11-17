@@ -16,7 +16,7 @@ struct SystemPanel: View {
         drawerSizes: [.small, .medium],
         view: { AnyView(SystemPanel(ctx: $0)) })
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let s = ctx.state("system", as: SystemState.self) {
@@ -32,22 +32,22 @@ struct SystemPanel: View {
 
     private func small(_ s: SystemState) -> some View {
         VStack(spacing: 8) {
-            FluentRingGauge(value: s.cpu / 100, label: "CPU").frame(width: 92, height: 92)
-            Text("Memory \(Int(s.memory))%").font(FluentFont.caption).foregroundStyle(theme.textSecondary)
+            RingGauge(value: s.cpu / 100, label: "CPU").frame(width: 92, height: 92)
+            Text("Memory \(Int(s.memory))%").font(AppFont.caption).foregroundStyle(theme.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func medium(_ s: SystemState) -> some View {
         HStack(spacing: 18) {
-            FluentRingGauge(value: s.cpu / 100, label: "CPU").frame(width: 84, height: 84)
+            RingGauge(value: s.cpu / 100, label: "CPU").frame(width: 84, height: 84)
             VStack(alignment: .leading, spacing: 10) {
                 Stat(title: "Memory", detail: String(format: "%.1f of %.0f GB", s.memoryUsedGb, s.memoryTotalGb), value: s.memory / 100)
                 if let b = s.battery {
                     Stat(title: b.charging ? "Battery · charging" : "Battery", detail: "\(b.percent)%", value: Double(b.percent) / 100,
                          tint: b.percent <= 15 && !b.charging ? theme.critical : nil)
                 } else {
-                    Text("Up \(Self.uptime(s.uptimeSeconds))").font(FluentFont.caption).foregroundStyle(theme.textSecondary)
+                    Text("Up \(Self.uptime(s.uptimeSeconds))").font(AppFont.caption).foregroundStyle(theme.textSecondary)
                 }
             }
         }
@@ -59,8 +59,8 @@ struct SystemPanel: View {
             HStack(spacing: 10) {
                 Image(systemName: "laptopcomputer").font(.system(size: 20))
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(s.hostName).font(FluentFont.bodyStrong).lineLimit(1)
-                    Text("Up \(Self.uptime(s.uptimeSeconds))").font(FluentFont.caption).foregroundStyle(theme.textSecondary)
+                    Text(s.hostName).font(AppFont.bodyStrong).lineLimit(1)
+                    Text("Up \(Self.uptime(s.uptimeSeconds))").font(AppFont.caption).foregroundStyle(theme.textSecondary)
                 }
             }
             .foregroundStyle(theme.textPrimary)
@@ -83,7 +83,7 @@ struct SystemPanel: View {
         Button { ctx.run("system", name) } label: {
             Label(title, systemImage: symbol).labelStyle(.titleAndIcon).frame(maxWidth: .infinity)
         }
-        .buttonStyle(FluentButtonStyle(kind: .standard, fill: true))
+        .buttonStyle(PillButtonStyle(kind: .standard, fill: true))
     }
 
     static func uptime(_ seconds: Double) -> String {
@@ -97,7 +97,7 @@ struct SystemPanel: View {
 /// and the power actions underneath. Disks and apps are measured by the PC while this is open.
 struct SystemDrawer: View {
     let ctx: PanelContext
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
     @State private var details: SystemDetailsState?
 
     private var hostHasDetails: Bool {
@@ -126,7 +126,7 @@ struct SystemDrawer: View {
     private func load(_ s: SystemState) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("\(s.hostName) · up \(SystemPanel.uptime(Double(s.uptimeSeconds)))")
-                .font(FluentFont.caption)
+                .font(AppFont.caption)
                 .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
             Stat(title: "CPU", detail: "\(Int(s.cpu))%", value: s.cpu / 100)
@@ -146,7 +146,7 @@ struct SystemDrawer: View {
     private var busiest: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Busiest apps")
-                .font(FluentFont.caption)
+                .font(AppFont.caption)
                 .foregroundStyle(theme.textSecondary)
             if let details {
                 ForEach(details.processes) { process in
@@ -158,14 +158,14 @@ struct SystemDrawer: View {
                         Text(Self.memory(process.memoryMb)).foregroundStyle(theme.textSecondary)
                             .frame(width: 72, alignment: .trailing)
                     }
-                    .font(FluentFont.caption)
+                    .font(AppFont.caption)
                     .monospacedDigit()
                 }
             } else if hostHasDetails {
-                FluentProgressRing(size: 18).frame(maxWidth: .infinity, minHeight: 60)
+                Spinner(size: 18).frame(maxWidth: .infinity, minHeight: 60)
             } else {
                 Text("Update FluentDeck on the PC to see its busiest apps and disks here.")
-                    .font(FluentFont.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(theme.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -176,7 +176,7 @@ struct SystemDrawer: View {
         Button { ctx.run("system", name) } label: {
             Label(title, systemImage: symbol).labelStyle(.titleAndIcon).frame(maxWidth: .infinity)
         }
-        .buttonStyle(FluentButtonStyle(kind: .standard, fill: true))
+        .buttonStyle(PillButtonStyle(kind: .standard, fill: true))
     }
 
     /// Ask the PC every two seconds while the drawer is open.
@@ -201,7 +201,7 @@ private struct Stat: View {
     let detail: String
     let value: Double
     var tint: Color? = nil
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -210,8 +210,8 @@ private struct Stat: View {
                 Spacer()
                 Text(detail).foregroundStyle(theme.textSecondary).monospacedDigit()
             }
-            .font(FluentFont.caption)
-            FluentProgressBar(value: value, tint: tint)
+            .font(AppFont.caption)
+            LevelBar(value: value, tint: tint)
         }
     }
 }

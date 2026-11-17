@@ -50,7 +50,7 @@ enum DeckEditing {
 
     /// Open the editor for a key, or for a new key when `buttonId` is nil.
     static func editKey(_ ctx: PanelContext, pageId: String, buttonId: String?) {
-        ctx.overlays.present { DeckKeyEditor(ctx: ctx, pageId: pageId, buttonId: buttonId) }
+        ctx.overlays.present(size: .page) { DeckKeyEditor(ctx: ctx, pageId: pageId, buttonId: buttonId) }
     }
 
     static func addPage(_ ctx: PanelContext) {
@@ -204,7 +204,7 @@ struct DeckKeyEditor: View {
     /// nil adds a key to the page.
     let buttonId: String?
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     @State private var loaded = false
     @State private var busy = false
@@ -244,16 +244,16 @@ struct DeckKeyEditor: View {
     }
 
     var body: some View {
-        ContentDialog(title: buttonId == nil ? "Add key" : "Edit key", maxWidth: 800) {
+        DialogSheet(title: buttonId == nil ? "Add key" : "Edit key", fills: true) {
             if loaded {
                 HStack(alignment: .top, spacing: 28) {
                     side.frame(width: 150)
                     ScrollView { form }
                         .scrollIndicators(.hidden)
-                        .frame(height: 440)
+                        .frame(maxHeight: .infinity)
                 }
             } else {
-                FluentProgressRing().frame(maxWidth: .infinity, minHeight: 200)
+                Spinner().frame(maxWidth: .infinity, minHeight: 200)
             }
         } footer: {
             DialogButton(title: "Save", accent: true, enabled: loaded && !busy) { save() }
@@ -273,13 +273,13 @@ struct DeckKeyEditor: View {
                            fill: useImage && DeckIconImage.isPicture(icon), label: label, lit: accent)
             if buttonId != nil {
                 HStack(spacing: 4) {
-                    FluentIconButton(symbol: "arrow.left", label: "Move earlier") { move(-1) }
+                    IconButton(symbol: "arrow.left", label: "Move earlier") { move(-1) }
                         .disabled(busy || index <= 0)
-                    FluentIconButton(symbol: "arrow.right", label: "Move later") { move(1) }
+                    IconButton(symbol: "arrow.right", label: "Move later") { move(1) }
                         .disabled(busy || index >= count - 1)
                 }
                 Button(action: delete) { Label("Delete key", systemImage: "trash") }
-                    .buttonStyle(FluentButtonStyle(kind: .subtle, compact: true))
+                    .buttonStyle(PillButtonStyle(kind: .subtle, compact: true))
                     .disabled(busy)
             }
         }
@@ -287,28 +287,25 @@ struct DeckKeyEditor: View {
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let problem { InfoBar(severity: .error, title: problem) }
+            if let problem { Banner(severity: .error, title: problem) }
 
             heading("Label")
-            FluentTextBox(placeholder: "Name shown under the key", text: $label)
+            TextBox(placeholder: "Name shown under the key", text: $label)
 
             heading("When pressed")
-            ScrollView(.horizontal) {
-                SelectorBar(items: kinds.map { SelectorBar<DeckKeyKind>.Item(id: $0, title: $0.title) },
-                            selection: Binding(get: { kind }, set: { if let new = $0 { kind = new } }))
-            }
-            .scrollIndicators(.hidden)
-            .padding(.leading, -20)
+            SegmentedBar(items: kinds.map { SegmentedBar<DeckKeyKind>.Item(id: $0, title: $0.title) },
+                         selection: Binding(get: { kind }, set: { if let new = $0 { kind = new } }))
             actionFields
 
             heading("Icon")
-            SelectorBar(items: [SelectorBar<Bool>.Item(id: false, title: "Symbol"), SelectorBar<Bool>.Item(id: true, title: "Image")],
+            SegmentedBar(items: [SegmentedBar<Bool>.Item(id: false, title: "Symbol"), SegmentedBar<Bool>.Item(id: true, title: "Image")],
                         selection: Binding(get: { useImage }, set: { if let new = $0 { useImage = new } }))
-                .padding(.leading, -20)
+                .frame(maxWidth: 260)
             if useImage { imageFields } else { symbolFields }
 
             Toggle("Always lit", isOn: $accent)
-                .toggleStyle(FluentToggleStyle())
+                .font(AppFont.body)
+                .foregroundStyle(theme.textPrimary)
                 .padding(.top, 4)
         }
         .padding(.trailing, 2)
@@ -331,7 +328,7 @@ struct DeckKeyEditor: View {
 
     private func heading(_ title: String) -> some View {
         Text(title)
-            .font(FluentFont.caption.weight(.semibold))
+            .font(AppFont.caption.weight(.semibold))
             .foregroundStyle(theme.textSecondary)
             .padding(.top, 8)
     }
@@ -349,9 +346,9 @@ struct DeckKeyEditor: View {
         case .app: appFields
         case .hotkey: hotkeyFields
         case .link:
-            FluentTextBox(placeholder: "https://… or an app link such as spotify:", text: $link, keyboard: .URL)
+            TextBox(placeholder: "https://… or an app link such as spotify:", text: $link, keyboard: .URL)
         case .text:
-            FluentTextBox(placeholder: "Text to type on the PC", text: $text)
+            TextBox(placeholder: "Text to type on the PC", text: $text)
         case .control: controlFields
         case .other:
             note("This key runs a multi-step or custom action. Change its steps in deck.json on the PC. Its label and icon can be changed here.")
@@ -360,7 +357,7 @@ struct DeckKeyEditor: View {
 
     private var appFields: some View {
         VStack(alignment: .leading, spacing: 8) {
-            FluentTextBox(placeholder: "Search apps on the PC", text: $search)
+            TextBox(placeholder: "Search apps on the PC", text: $search)
             if let apps {
                 if apps.isEmpty {
                     note("The PC didn’t list any apps. Enter a path or command below.")
@@ -375,9 +372,9 @@ struct DeckKeyEditor: View {
                     .frame(height: 180)
                 }
             } else {
-                FluentProgressRing(size: 18).frame(maxWidth: .infinity, minHeight: 60)
+                Spinner(size: 18).frame(maxWidth: .infinity, minHeight: 60)
             }
-            FluentTextBox(placeholder: "Or a path or command, e.g. wt.exe", text: $target)
+            TextBox(placeholder: "Or a path or command, e.g. wt.exe", text: $target)
         }
         .task { await loadApps() }
     }
@@ -390,7 +387,7 @@ struct DeckKeyEditor: View {
                     DeckChip(title: modifier, on: DeckHotkey.holds(keys, modifier)) { keys = DeckHotkey.toggling(keys, modifier) }
                 }
             }
-            FluentTextBox(placeholder: "Win+Shift+S", text: $keys)
+            TextBox(placeholder: "Win+Shift+S", text: $keys)
             LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
                 ForEach(DeckHotkey.specialKeys, id: \.self) { key in
                     DeckChip(title: key, on: false) { keys = DeckHotkey.settingKey(keys, key) }
@@ -406,14 +403,14 @@ struct DeckKeyEditor: View {
                 Button { choose(preset) } label: {
                     HStack(spacing: 12) {
                         Image(systemName: preset.symbol).font(.system(size: 16)).frame(width: 26)
-                        Text(preset.title).font(FluentFont.body)
+                        Text(preset.title).font(AppFont.body)
                         Spacer(minLength: 0)
                     }
                     .foregroundStyle(theme.textPrimary)
                     .padding(.horizontal, 10)
                     .frame(height: 44)
-                    .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous)
-                        .fill(preset.id == controlID ? theme.subtleFillSecondary : Color.clear))
+                    .background(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
+                        .fill(preset.id == controlID ? theme.controlFill : Color.clear))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -430,14 +427,13 @@ struct DeckKeyEditor: View {
                             .font(.system(size: 18))
                             .foregroundStyle(name == symbol ? theme.textOnAccent : theme.textPrimary)
                             .frame(width: 44, height: 44)
-                            .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous)
-                                .fill(name == symbol ? theme.accent : theme.controlFillTertiary))
+                            .background(Circle().fill(name == symbol ? theme.accent : theme.controlFillTertiary))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(name)
                 }
             }
-            FluentTextBox(placeholder: "Or any SF Symbol name", text: $symbol)
+            TextBox(placeholder: "Or any SF Symbol name", text: $symbol)
         }
     }
 
@@ -446,12 +442,12 @@ struct DeckKeyEditor: View {
             HStack(spacing: 8) {
                 if kind == .app, !target.trimmingCharacters(in: .whitespaces).isEmpty {
                     Button("Use the app’s icon") { useAppIcon() }
-                        .buttonStyle(FluentButtonStyle())
+                        .buttonStyle(PillButtonStyle())
                 }
                 PhotosPicker(selection: $photo, matching: .images) {
                     Label("Choose a photo…", systemImage: "photo")
                 }
-                .buttonStyle(FluentButtonStyle())
+                .buttonStyle(PillButtonStyle())
                 .disabled(busy)
             }
             if icon == nil {
@@ -676,30 +672,26 @@ private struct DeckKeyPreview: View {
     let fill: Bool
     let label: String
     let lit: Bool
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Fluent.tileRadius, style: .continuous)
+        let shape = Circle()
         VStack(spacing: 9) {
             ZStack {
-                if lit {
-                    shape.fill(theme.accent).shadow(color: theme.accent.opacity(0.45), radius: 18)
-                } else {
-                    shape.fill(theme.tileFill)
-                }
+                shape.fill(lit ? theme.accent : theme.tileFill)
                 if let iconAsset, fill {
                     RemoteImage(path: iconAsset, contentMode: .fill)
-                        .frame(width: 150, height: 130)
+                        .frame(width: 124, height: 124)
                         .clipShape(shape)
                 } else if let iconAsset {
                     RemoteImage(path: iconAsset, contentMode: .fit) { Image(systemName: "app").font(.system(size: 36)) }
-                        .frame(width: 50, height: 50)
+                        .frame(width: 60, height: 60)
                 } else {
-                    Image(systemName: symbol.isEmpty ? "square.dashed" : symbol).font(.system(size: 38))
+                    Image(systemName: symbol.isEmpty ? "square.dashed" : symbol).font(.system(size: 42))
                 }
             }
             .foregroundStyle(lit ? theme.textOnAccent : theme.textPrimary)
-            .frame(width: 150, height: 130)
+            .frame(width: 124, height: 124)
             Text(label.isEmpty ? "Label" : label)
                 .font(.system(size: 13))
                 .foregroundStyle(label.isEmpty ? theme.textTertiary : theme.textSecondary)
@@ -715,22 +707,22 @@ private struct DeckAppRow: View {
     let app: DeckAppInfo
     let selected: Bool
     let choose: () -> Void
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button(action: choose) {
             HStack(spacing: 12) {
                 RemoteImage(path: app.icon, contentMode: .fit) { Image(systemName: "app").font(.system(size: 18)) }
                     .frame(width: 26, height: 26)
-                Text(app.name).font(FluentFont.body).lineLimit(1)
+                Text(app.name).font(AppFont.body).lineLimit(1)
                 Spacer(minLength: 0)
                 if selected { Image(systemName: "checkmark").font(.system(size: 13, weight: .semibold)) }
             }
             .foregroundStyle(theme.textPrimary)
             .padding(.horizontal, 10)
             .frame(height: 44)
-            .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous)
-                .fill(selected ? theme.subtleFillSecondary : Color.clear))
+            .background(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
+                .fill(selected ? theme.controlFill : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -744,7 +736,7 @@ private struct DeckChip: View {
     let title: String
     let on: Bool
     let action: () -> Void
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button(action: action) {
@@ -754,8 +746,7 @@ private struct DeckChip: View {
                 .lineLimit(1)
                 .padding(.horizontal, 12)
                 .frame(minWidth: 52, maxWidth: .infinity, minHeight: 36)
-                .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous)
-                    .fill(on ? theme.accent : theme.controlFill))
+                .background(Capsule().fill(on ? theme.accent : theme.controlFill))
         }
         .buttonStyle(.plain)
     }
@@ -768,8 +759,8 @@ struct DeckPageRenameDialog: View {
     @State private var name = ""
 
     var body: some View {
-        ContentDialog(title: "Rename page") {
-            FluentTextBox(placeholder: "Page name", text: $name) { save() }
+        DialogSheet(title: "Rename page") {
+            TextBox(placeholder: "Page name", text: $name) { save() }
         } footer: {
             DialogButton(title: "Save", accent: true, enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty) { save() }
             DialogButton(title: "Cancel") { ctx.overlays.dismissDialog() }

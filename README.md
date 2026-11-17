@@ -2,7 +2,7 @@
 
 **FluentDeck is a touch controller for your Windows PC that runs on your iPad.** Think of it as Windows 11 crossed with a Stream Deck.
 
-- **On the iPad:** a native SwiftUI app that sets Windows 11's dark quick settings controls straight on a true black ground, so the iPad's bezel disappears. Nothing is boxed or ruled: deck keys are soft toggle tiles, volume uses WinUI sliders, and space separates the widgets. The cover art and lit keys glow onto the black. Everything is sized for touch, and the accent color **follows your PC's live**.
+- **On the iPad:** a native SwiftUI app in iOS dark mode. Boards live in the system tab bar, with a standard toolbar for adding widgets, customizing and the PC's connection. Each board is laid out like Control Center: translucent modules on a dark ground tinted by whatever is playing, with round toggle buttons for deck keys and thick pill sliders for volume. Menus, sheets and switches are the system's own.
 - **On the PC:** a small tray app (native on Arm64, so it runs natively on your Snapdragon). It exposes media, audio, system stats and a configurable button deck over your LAN.
 
 ```
@@ -27,11 +27,11 @@
 | **Reminders** | S ▴ / M ▴ / L ▴ | Open reminders from the iPad, with a tap to tick one off. Its drawer has the full list. Works without the PC. |
 | **Clock** | S / M / L | Large, light numerals. Runs on the iPad only. It's also the smallest example panel. |
 
-**▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a drawer slides over the board with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
+**▴ Drawers.** Sizes marked ▴ are compact: they show the essentials and carry a small handle. Tap it or flick it up and a system sheet slides over the board with the rest of the widget's controls. Drag it down, tap outside or tap ✕ to put it away.
 
 Calendar and Reminders read the iPad's own accounts through EventKit, so iOS asks for access the first time each is shown.
 
-You can set up any number of **boards** (tabs, like Stream Deck profiles). A board fills the screen like a hardware deck: 6 × 4 cells in landscape, 4 × 7 in portrait, and it scrolls only if you pin more than that. The bottom line holds **Add widgets** (+), **Customize** (pencil) and settings (gear). While customizing, each widget shows a dashed outline and a **⋯** button for its size, widget-specific options (e.g. which deck page to show) and *Unpin*, and you can drag widgets to reorder them.
+You can set up any number of **boards**; each is a tab in the tab bar (like Stream Deck profiles). A board fills the screen: 6 × 4 cells in landscape, 4 × 7 in portrait, and it scrolls only if you add more than that. The toolbar holds **Add widgets** (+), **Customize** (pencil) and a **⋯** menu for renaming, reordering, adding and deleting boards. The PC's name on the left opens its connection menu. While customizing, modules jiggle as on the Home Screen: tap **−** to remove one, **⋯** for its size and options (e.g. which deck page to show), or drag to reorder.
 
 ## Quick start
 
@@ -173,9 +173,9 @@ struct AgentsPanel: View {
     var body: some View {
         if let s = ctx.state("agents", as: State.self) {
             ForEach(s.jobs) { job in
-                HStack { Text(job.title); FluentProgressBar(value: job.progress)
+                HStack { Text(job.title); LevelBar(value: job.progress)
                          Button("Stop") { ctx.run("agents", "stop", ["id": .string(job.id)]) }
-                            .buttonStyle(FluentButtonStyle()) }
+                            .buttonStyle(PillButtonStyle()) }
             }
         }
     }
@@ -187,13 +187,13 @@ To give a widget a drawer, add `drawer: { AnyView(AgentsDrawer(ctx: $0)) }` to i
 
 If a PC doesn't provide a topic yet, the picker shows that widget as unavailable, so older hosts degrade gracefully.
 
-Reusable Fluent components live in `ipad/FluentDeck/Fluent/`: `FluentButtonStyle`, `FluentIconButton`, `FluentSlider` / `RemoteSlider` (optimistic and throttled), `FluentToggleStyle`, `FluentProgressBar`, `FluentProgressRing`, `FluentRingGauge`, `InfoBar`, `InfoBadge`, `FluentTextBox`, `SelectorBar`, `FlyoutButton` and `MenuFlyoutView`, `ContentDialog` and `DialogButton`, `SettingsCard`, and the `FluentTheme` tokens.
+Shared pieces live in `ipad/FluentDeck/Design/`: `PillButtonStyle`, `IconButton`, `PillSlider` / `RemoteSlider` (optimistic and throttled), `LevelBar`, `Spinner`, `RingGauge`, `Banner`, `StatusDot`, `TextBox`, `SegmentedBar`, `ActionMenu` (a system menu from a list of `ActionItem`s), `DialogSheet` and `DialogButton`, and the `Theme` tokens.
 
 ## Design notes
 
-- **Look:** dark only, on true black, with no panels, borders or dividers. Widgets are separated by space (a 32 pt gutter against 16 pt inside a widget) and share one screen margin. Corners are large and continuous. Depth comes from soft fills and light: the cover art casts a blurred halo of its own colours, and a lit key glows in the accent. Text tokens are WinUI 3's dark theme resources, mapped in `FluentTheme.swift`, and the accent ramp comes from the PC's `UISettings`.
-- **Sizing for touch:** the type ramp is scaled about 1.15×, every control is at least 44 pt, slider thumbs grow while you hold them, and deck keys respond to presses with scale and haptics.
-- **Fonts and icons:** Segoe UI Variable and Segoe Fluent Icons aren't licensed for iOS, so the app uses SF Pro on the same type ramp and SF Symbols at regular weight. These read very close to Fluent. Icons go through plain symbol-name strings, so swapping in Microsoft's MIT-licensed Fluent UI System Icons later is a contained change.
+- **Look:** iOS dark mode. The board is a Control Center-style grid: each widget sits on a translucent platter with large continuous corners, 14 pt apart, over a dark ground washed with the colours of the current cover art. Deck keys are circles that fill with the tint while on; sliders are capsules that fill from the left, with no thumb. Colours are the iOS dark system palette, mapped in `Design/Theme.swift`.
+- **System components:** boards are a `TabView`, so the tab bar is whatever the iPad's OS draws (floating at the top on iPadOS 18 and later, at the bottom before). The toolbar, menus, sheets, segmented controls, switches and activity indicators are the system's too. Drawers are sheets sized to their content.
+- **Sizing for touch:** every control is at least 44 pt, sliders swell while you hold them, and deck keys respond to presses with scale and haptics.
 - **Grid:** `DashboardGrid` is a custom `Layout` that packs 1×1 to 4×3 tiles first-fit. `DashboardGrid.fit` sizes the cells so 6 × 4 of them (4 × 7 in portrait) fill the screen exactly.
 
 ## Security model

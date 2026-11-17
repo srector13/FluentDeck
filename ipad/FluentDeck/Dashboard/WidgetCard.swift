@@ -1,29 +1,31 @@
 import SwiftUI
 
-/// Places a widget on the board. There is no panel: a widget's controls sit straight on the black,
-/// and the space around them is what sets it apart. While customizing, each widget gets a soft
-/// backdrop, a dashed outline and an options button.
+/// A module on the board: a widget on a translucent platter, as in Control Center. While
+/// customizing, modules jiggle and carry a remove badge and an options menu, as widgets do on the
+/// Home Screen.
 struct WidgetCard: View {
     let tile: TileInstance
     let spec: PanelSpec
     let ctx: PanelContext
     var editing = false
-    /// In the "Add widgets" picker: shown on a black swatch, as it will look on the board.
+    /// In the "Add widgets" picker: shown as it will look on the board, without the board's extras.
     var preview = false
     var onResize: (TileSize) -> Void = { _ in }
     var onRemove: () -> Void = {}
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     private var available: Bool {
         guard let topic = spec.requires else { return true }
         return ctx.connection.hostProvides(topic)
     }
 
+    private var hasDrawer: Bool {
+        spec.drawer != nil && available && !preview && (spec.drawerSizes?.contains(tile.size) ?? true)
+    }
+
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Fluent.panelRadius, style: .continuous)
-        // The outline sits in the gutter, so it never touches the widget's own edges.
-        let outset = -Fluent.gutter * 0.4
+        let shape = RoundedRectangle(cornerRadius: Metrics.panelRadius, style: .continuous)
         VStack(spacing: 0) {
             Group {
                 if available {
@@ -33,60 +35,71 @@ struct WidgetCard: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            if let drawer = spec.drawer, available, !preview, spec.drawerSizes?.contains(tile.size) ?? true {
+            if hasDrawer, let drawer = spec.drawer {
                 DrawerHandle(title: spec.title) {
                     ctx.overlays.openDrawer(title: spec.title) { drawer(ctx) }
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .allowsHitTesting(!editing || spec.editsInPlace)
+        .padding([.horizontal, .top], Metrics.cardPadding)
+        .padding(.bottom, hasDrawer ? 4 : Metrics.cardPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
-            if let background = spec.background, available { background(ctx) }
-        }
-        .padding(preview ? Fluent.cardPadding : 0)
-        .background {
-            if preview {
-                shape.fill(Color.black)
-            } else if editing {
-                shape.fill(theme.controlFillTertiary).padding(outset)
+            ZStack {
+                shape.fill(.ultraThinMaterial)
+                shape.fill(theme.controlFillTertiary)
+                if let background = spec.background, available { background(ctx).clipShape(shape) }
             }
         }
-        .overlay {
+        .contentShape(shape)
+        .overlay(alignment: .topLeading) {
             if editing {
-                shape.strokeBorder(theme.accent.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [2, 7]))
-                    .padding(outset)
+                Button(action: onRemove) {
+                    Image(systemName: "minus")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.black)
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(.white.opacity(0.92)))
+                        .frame(width: Metrics.touchTarget, height: Metrics.touchTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .offset(x: -14, y: -14)
+                .accessibilityLabel("Remove \(spec.title)")
             }
         }
-        .contentShape(Rectangle())
         .overlay(alignment: .topTrailing) {
             if editing {
-                FlyoutButton(width: 240, items: menuItems) {
+                ActionMenu(items: menuItems) {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(theme.textPrimary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(theme.controlSolidFill))
+                        .frame(width: Metrics.touchTarget, height: Metrics.touchTarget)
+                        .contentShape(Rectangle())
                 }
-                .background(Circle().fill(theme.controlSolidFill))
-                .offset(x: -outset * 0.4, y: outset * 0.4)
+                .offset(x: 6, y: -6)
                 .accessibilityLabel("Options for \(spec.title)")
             }
         }
+        .modifier(Jiggle(active: editing))
     }
 
-    /// The grabber under a compact widget. Tap it or flick it up for the widget's drawer.
+    /// The grabber at the foot of a compact module. Tap it or flick it up for the widget's drawer.
     private struct DrawerHandle: View {
         let title: String
         let open: () -> Void
-        @Environment(\.fluent) private var theme
+        @Environment(\.theme) private var theme
 
         var body: some View {
             Button(action: open) {
                 Capsule()
-                    .fill(theme.textTertiary.opacity(0.7))
+                    .fill(theme.textTertiary)
                     .frame(width: 36, height: 5)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 26, alignment: .bottom)
+                    .frame(height: 22)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -99,11 +112,25 @@ struct WidgetCard: View {
         }
     }
 
-    private func menuItems() -> [FlyoutItem] {
-        var items: [FlyoutItem] = [.header(spec.title)]
+    /// The Home Screen's edit-mode wobble.
+    private struct Jiggle: ViewModifier {
+        let active: Bool
+        @State private var tilted = false
+
+        func body(content: Content) -> some View {
+            content
+                .rotationEffect(.degrees(active ? (tilted ? 0.5 : -0.5) : 0))
+                .animation(active ? .easeInOut(duration: 0.13).repeatForever(autoreverses: true) : .easeOut(duration: 0.15), value: tilted)
+                .animation(.easeOut(duration: 0.15), value: active)
+                .onChange(of: active, initial: true) { _, on in tilted = on }
+        }
+    }
+
+    private func menuItems() -> [ActionItem] {
+        var items: [ActionItem] = [.header(spec.title)]
         if spec.sizes.count > 1 {
             items += spec.sizes.map { size in
-                FlyoutItem.action(size.title, checked: size == tile.size) { onResize(size) }
+                ActionItem.action(size.title, checked: size == tile.size) { onResize(size) }
             }
         }
         let extra = spec.menu(ctx)
@@ -112,7 +139,7 @@ struct WidgetCard: View {
             items += extra
         }
         items.append(.separator)
-        items.append(.action("Unpin widget", symbol: "pin.slash", destructive: true) { onRemove() })
+        items.append(.action("Remove widget", symbol: "minus.circle", destructive: true) { onRemove() })
         return items
     }
 }

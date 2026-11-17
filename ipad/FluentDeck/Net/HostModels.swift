@@ -126,17 +126,6 @@ struct SystemDetailsState: Codable, Equatable {
     var processes: [BusyProcess]
 }
 
-struct ThemeState: Codable, Equatable {
-    var isDark: Bool
-    var accent: String
-    var accentLight1: String
-    var accentLight2: String
-    var accentLight3: String
-    var accentDark1: String
-    var accentDark2: String
-    var accentDark3: String
-}
-
 struct DeckBinding: Codable, Equatable {
     var topic: String
     var path: String

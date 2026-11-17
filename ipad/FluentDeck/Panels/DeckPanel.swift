@@ -19,17 +19,17 @@ struct DeckPanel: View {
         view: { AnyView(DeckPanel(ctx: $0)) })
 
     /// Pages, and (when the PC allows editing) adding keys and managing pages.
-    static func menu(_ ctx: PanelContext) -> [FlyoutItem] {
+    static func menu(_ ctx: PanelContext) -> [ActionItem] {
         guard let deck = ctx.state("deck", as: DeckState.self), !deck.pages.isEmpty else { return [] }
         let current = DeckPanel.page(in: deck, ctx: ctx)
         let canEdit = DeckEditing.canEdit(ctx, deck)
-        var items: [FlyoutItem] = []
+        var items: [ActionItem] = []
         if canEdit, let page = current {
             items.append(.action("Add key…", symbol: "plus") { DeckEditing.editKey(ctx, pageId: page.id, buttonId: nil) })
             items.append(.separator)
         }
         items.append(.header("Page"))
-        items += deck.pages.map { p in FlyoutItem.action(p.title, checked: p.id == current?.id) { ctx.updateConfig("page", p.id) } }
+        items += deck.pages.map { p in ActionItem.action(p.title, checked: p.id == current?.id) { ctx.updateConfig("page", p.id) } }
         if canEdit {
             items.append(.action("New page", symbol: "plus.rectangle.on.rectangle") { DeckEditing.addPage(ctx) })
             if let page = current {
@@ -50,13 +50,13 @@ struct DeckPanel: View {
         deck.pages.first { $0.id == ctx.config["page"] } ?? deck.pages.first
     }
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let deck = ctx.state("deck", as: DeckState.self) {
             VStack(spacing: 8) {
                 if let error = deck.error {
-                    InfoBar(severity: .warning, title: "deck.json has an error", message: error)
+                    Banner(severity: .warning, title: "deck.json has an error", message: error)
                 }
                 if let page = Self.page(in: deck, ctx: ctx) {
                     if page.buttons.isEmpty {
@@ -81,7 +81,7 @@ extension DeckPanel {
             VStack(spacing: 12) {
                 PanelEmptyState(symbol: "square.grid.3x3", text: "No keys on this page yet").frame(maxHeight: 90)
                 Button { DeckEditing.editKey(ctx, pageId: page.id, buttonId: nil) } label: { Label("Add key", systemImage: "plus") }
-                    .buttonStyle(FluentButtonStyle(kind: .accent))
+                    .buttonStyle(PillButtonStyle(kind: .accent))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -90,17 +90,17 @@ extension DeckPanel {
     }
 }
 
-/// Sizes the keys so a page fills its widget: the column count that gives the largest tiles
-/// without scrolling, unless deck.json fixes `columns`. Width beyond a key-like shape doesn't
-/// count, so a page becomes a grid of keys rather than a stack of wide bars.
+/// Sizes the keys so a page fills its module: the column count that gives the largest circles
+/// without scrolling, unless deck.json fixes `columns`.
 private enum DeckLayout {
     static let gap: CGFloat = 16
     static let rowGap: CGFloat = 12
     static let labelGap: CGFloat = 9
     static let labelHeight: CGFloat = 18
-    /// Height of a quick settings tile relative to its width.
-    static let aspect: CGFloat = 0.87
+    /// The largest a key's circle gets, however much room there is.
+    static let maxSide: CGFloat = 150
 
+    /// `tile.width` is the column a key sits in; `tile.height` is the diameter of its circle.
     struct Fit {
         var columns: Int
         var tile: CGSize
@@ -117,11 +117,11 @@ private enum DeckLayout {
             let w = width(columns)
             let rows = (n + columns - 1) / columns
             let cell = (size.height - CGFloat(rows - 1) * rowGap) / CGFloat(rows)
-            return CGSize(width: w, height: min(cell - labelGap - labelHeight, w * aspect))
+            return CGSize(width: w, height: min(cell - labelGap - labelHeight, w, maxSide))
         }
         func scrolling(_ columns: Int) -> Fit {
             let w = width(columns)
-            return Fit(columns: columns, tile: CGSize(width: w, height: max(44, w * aspect)), scrolls: true)
+            return Fit(columns: columns, tile: CGSize(width: w, height: min(max(44, w), maxSide)), scrolls: true)
         }
 
         if let fixed = fixedColumns, fixed > 0 {
@@ -134,7 +134,7 @@ private enum DeckLayout {
         for columns in 1...min(n, 12) {
             let t = tile(columns)
             guard t.width >= 56, t.height >= 44 else { continue }
-            let score = min(t.width, t.height * 1.6) * t.height
+            let score = t.height // the bigger the circle, the better
             if score > bestScore {
                 bestScore = score
                 best = Fit(columns: columns, tile: t, scrolls: false)
@@ -159,17 +159,17 @@ private struct DeckGrid: View {
                         DeckKey(ctx: ctx, button: button, tile: fit.tile, page: page, deck: deck)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                // A page with room to spare sits in the middle of its module.
+                .frame(maxWidth: .infinity, minHeight: fit.scrolls ? nil : g.size.height, alignment: .center)
             }
             .scrollDisabled(!fit.scrolls)
-            .scrollClipDisabled(!fit.scrolls) // a lit key's glow isn't cut off at the edge
             .scrollIndicators(.hidden)
         }
     }
 }
 
-/// A deck key drawn as a quick settings toggle: a soft, borderless tile with its label underneath.
-/// While it is on it fills with the accent and glows.
+/// A deck key drawn as a Control Center button: a circle with its label underneath. While it is on
+/// it fills with the tint.
 private struct DeckKey: View {
     let ctx: PanelContext
     let button: DeckButtonModel
@@ -177,7 +177,7 @@ private struct DeckKey: View {
     let page: DeckPageModel
     let deck: DeckState
 
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
     @State private var running = false
     @State private var failed = false
     @State private var presses = 0
@@ -192,28 +192,24 @@ private struct DeckKey: View {
     var body: some View {
         let on = isOn
         let lit = on || button.style == "accent"
-        let shape = RoundedRectangle(cornerRadius: min(Fluent.tileRadius, tile.height * 0.2), style: .continuous)
-        let glyph = min(max(tile.height * 0.3, 18), 44)
+        let shape = Circle()
+        let side = min(tile.width, tile.height)
+        let glyph = min(max(side * 0.34, 18), 48)
         Button(action: ctx.editing ? edit : press) {
             VStack(spacing: DeckLayout.labelGap) {
                 ZStack {
-                    if lit {
-                        shape.fill(theme.accent)
-                            .shadow(color: theme.accent.opacity(0.45), radius: 22)
-                    } else {
-                        shape.fill(theme.tileFill)
-                    }
+                    shape.fill(lit ? theme.accent : theme.tileFill)
                     if failed { shape.strokeBorder(theme.critical, lineWidth: 2) }
                     if let icon = button.icon, button.iconFill == true {
                         // A picture fills the key, as on a Stream Deck.
                         RemoteImage(path: icon, contentMode: .fill)
-                            .frame(width: tile.width, height: tile.height)
+                            .frame(width: side, height: side)
                             .clipShape(shape)
                     } else if let icon = button.icon {
                         RemoteImage(path: icon, contentMode: .fit) {
                             Image(systemName: button.symbol ?? "app").font(.system(size: glyph))
                         }
-                        .frame(width: glyph * 1.3, height: glyph * 1.3)
+                        .frame(width: side * 0.5, height: side * 0.5)
                     } else {
                         Image(systemName: (on ? button.symbolOn : nil) ?? button.symbol ?? "square.dashed")
                             .font(.system(size: glyph, weight: .regular))
@@ -221,7 +217,7 @@ private struct DeckKey: View {
                     }
                 }
                 .foregroundStyle(lit ? theme.textOnAccent : theme.textPrimary)
-                .frame(width: tile.width, height: tile.height)
+                .frame(width: side, height: side)
                 .overlay(alignment: .topTrailing) {
                     if ctx.editing {
                         Image(systemName: "pencil")
@@ -229,9 +225,8 @@ private struct DeckKey: View {
                             .foregroundStyle(theme.textPrimary)
                             .frame(width: 24, height: 24)
                             .background(Circle().fill(theme.controlSolidFill))
-                            .padding(8)
                     } else if running {
-                        FluentProgressRing(size: 12, lineWidth: 2).padding(8)
+                        Spinner(size: 14)
                     }
                 }
                 Text(button.label)

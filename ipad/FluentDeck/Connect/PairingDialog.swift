@@ -3,7 +3,7 @@ import SwiftUI
 /// Shown when the PC doesn't know this iPad yet: enter the 6-digit code from the tray app.
 struct PairingDialog: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
     @State private var code = ""
     @State private var submitted = false
 
@@ -15,12 +15,12 @@ struct PairingDialog: View {
     var body: some View {
         ZStack {
             theme.smoke.ignoresSafeArea()
-            ContentDialog(title: "Pair with \(app.connection.hostName)") {
+            DialogSheet(title: "Pair with \(app.connection.hostName)") {
                 Text("On the PC, click the FluentDeck icon in the system tray and choose **Pair new device…**, then type the code it shows.")
-                    .font(FluentFont.body)
+                    .font(AppFont.body)
                     .foregroundStyle(theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                FluentTextBox(placeholder: "000 000", text: $code, keyboard: .numberPad, contentType: .oneTimeCode, large: true, onSubmit: pair)
+                TextBox(placeholder: "000 000", text: $code, keyboard: .numberPad, contentType: .oneTimeCode, large: true, onSubmit: pair)
                     .onChange(of: code) { _, new in
                         let digits = String(new.filter(\.isNumber).prefix(6))
                         if digits != new { code = digits }
@@ -28,12 +28,14 @@ struct PairingDialog: View {
                         if digits.count < 6 { submitted = false }
                     }
                 if let reason {
-                    InfoBar(severity: submitted ? .error : .informational, title: reason)
+                    Banner(severity: submitted ? .error : .informational, title: reason)
                 }
             } footer: {
                 DialogButton(title: "Pair", accent: true, enabled: code.count == 6, action: pair)
                 DialogButton(title: "Cancel") { app.cancelConnect() }
             }
+            .frame(maxWidth: 460)
+            .background(RoundedRectangle(cornerRadius: Metrics.panelRadius, style: .continuous).fill(.regularMaterial))
             .padding(24)
         }
     }

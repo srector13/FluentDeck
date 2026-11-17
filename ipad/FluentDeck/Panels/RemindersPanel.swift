@@ -16,7 +16,7 @@ struct RemindersPanel: View {
         view: { AnyView(RemindersPanel(ctx: $0)) })
 
     @Environment(PlannerStore.self) private var planner
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         switch planner.remindersAccess {
@@ -44,14 +44,14 @@ struct RemindersPanel: View {
             let due = open.filter { PlannerFormat.isDue($0, now: now) }.count
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(due > 0 ? due : open.count)")
-                    .font(FluentFont.titleLarge)
+                    .font(AppFont.titleLarge)
                     .monospacedDigit()
                     .foregroundStyle(theme.textPrimary)
                 Text(due > 0 ? "due today" : "open")
-                    .font(FluentFont.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(theme.textSecondary)
                 Text(open[0].title)
-                    .font(FluentFont.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(theme.textSecondary)
                     .lineLimit(1)
                     .padding(.top, 4)
@@ -102,7 +102,7 @@ struct PlannerReminderRow: View {
     let reminder: PlannerReminder
     let now: Date
     @Environment(PlannerStore.self) private var planner
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         let overdue = PlannerFormat.isOverdue(reminder, now: now)
@@ -121,11 +121,11 @@ struct PlannerReminderRow: View {
             .accessibilityLabel("Complete \(reminder.title)")
             VStack(alignment: .leading, spacing: 2) {
                 Text(reminder.title)
-                    .font(FluentFont.bodyStrong)
+                    .font(AppFont.bodyStrong)
                     .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                 Text(PlannerFormat.due(reminder, now: now))
-                    .font(FluentFont.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(overdue ? theme.critical : theme.textSecondary)
                     .lineLimit(1)
             }

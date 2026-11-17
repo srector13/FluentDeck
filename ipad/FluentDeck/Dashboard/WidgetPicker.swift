@@ -1,24 +1,24 @@
 import SwiftUI
 
-/// The Windows 11 "Pin widgets" dialog: list on the left, live preview and size choice on the right.
+/// The "Add widgets" sheet: the list on the left, a live preview and the size choice on the right.
 struct WidgetPicker: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.fluent) private var theme
+    @Environment(\.theme) private var theme
     @State private var selected = "media.nowPlaying"
     @State private var size: TileSize = .tall
 
     private var spec: PanelSpec? { PanelCatalog.spec(for: selected) }
 
     var body: some View {
-        ContentDialog(title: "Add widgets", maxWidth: 820) {
+        DialogSheet(title: "Add widgets", fills: true) {
             HStack(alignment: .top, spacing: 28) {
                 list
                     .frame(width: 230)
                 if let spec { detail(spec) }
             }
-            .frame(height: 440)
+            .frame(maxHeight: .infinity)
         } footer: {
-            DialogButton(title: "Pin", accent: true, enabled: spec.map(isAvailable) ?? false) {
+            DialogButton(title: "Add widget", accent: true, enabled: spec.map(isAvailable) ?? false) {
                 if let spec { withAnimation(.snappy) { app.layout.add(spec, size: size) } }
                 app.overlays.dismissDialog()
             }
@@ -37,13 +37,13 @@ struct WidgetPicker: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: s.symbol).font(.system(size: 16)).frame(width: 22)
-                            Text(s.title).font(FluentFont.body)
+                            Text(s.title).font(AppFont.body)
                             Spacer(minLength: 0)
                         }
                         .foregroundStyle(isAvailable(s) ? theme.textPrimary : theme.textDisabled)
                         .padding(.horizontal, 12)
                         .frame(height: 44)
-                        .background(RoundedRectangle(cornerRadius: Fluent.controlRadius, style: .continuous).fill(isSelected ? theme.subtleFillSecondary : .clear))
+                        .background(RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous).fill(isSelected ? theme.controlFill : .clear))
                         .overlay(alignment: .leading) {
                             // NavigationView selection pill
                             if isSelected { Capsule().fill(theme.accent).frame(width: 3, height: 16) }
@@ -58,15 +58,14 @@ struct WidgetPicker: View {
 
     private func detail(_ spec: PanelSpec) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(spec.title).font(FluentFont.bodyLarge.weight(.semibold)).foregroundStyle(theme.textPrimary)
-            Text(spec.summary).font(FluentFont.body).foregroundStyle(theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+            Text(spec.title).font(AppFont.bodyLarge.weight(.semibold)).foregroundStyle(theme.textPrimary)
+            Text(spec.summary).font(AppFont.body).foregroundStyle(theme.textSecondary).fixedSize(horizontal: false, vertical: true)
             if spec.sizes.count > 1 {
-                SelectorBar(items: spec.sizes.map { SelectorBar<TileSize>.Item(id: $0, title: $0.title) },
+                SegmentedBar(items: spec.sizes.map { SegmentedBar<TileSize>.Item(id: $0, title: $0.title) },
                             selection: Binding(get: { size }, set: { if let s = $0 { size = s } }))
-                    .padding(.leading, -12)
             }
             if !isAvailable(spec) {
-                InfoBar(severity: .warning, title: "Not available on this PC",
+                Banner(severity: .warning, title: "Not available on this PC",
                         message: "Update FluentDeck on the PC to get the “\(spec.requires ?? "")” panel.")
             }
             preview(spec)
