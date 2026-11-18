@@ -28,6 +28,10 @@ public sealed class HostSettings
     /// <summary>Let paired devices add, change and remove deck keys. Off by default: with it on,
     /// a paired device can make this PC launch any program.</summary>
     public bool AllowDeckEditing { get; set; }
+    /// <summary>Keys that make a full-screen remote desktop client let go of the keyboard, pressed
+    /// before FluentDeck switches desktops or apps while one is in front. Horizon's default is
+    /// Ctrl+Alt (an administrator can change it); empty turns it off.</summary>
+    public string RemoteReleaseKeys { get; set; } = "Ctrl+Alt";
 
     public string Name => string.IsNullOrWhiteSpace(DisplayName) ? Environment.MachineName : DisplayName!;
     public static string Version => typeof(HostSettings).Assembly.GetName().Version?.ToString(3) ?? "0.1.0";

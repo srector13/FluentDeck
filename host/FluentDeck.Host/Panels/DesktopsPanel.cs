@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using FluentDeck.Core.Deck;
+using FluentDeck.Core.Hosting;
 using FluentDeck.Core.Panels;
 using FluentDeck.Host.Interop;
 using Microsoft.Extensions.Logging;
@@ -11,11 +12,14 @@ namespace FluentDeck.Host.Panels;
 /// <summary>Windows' virtual desktops: their names and which one is showing, read from the registry
 /// a few times a second, and switching between them.
 ///
-/// Windows has no public API to switch desktops, so this presses Ctrl+Win+Left/Right as many times
-/// as it takes, the same shortcut you would use. Before that it puts the taskbar in front: a
-/// full-screen remote desktop client (Omnissa Horizon, RDP) would otherwise get the keys and pass
-/// them to the remote PC instead of switching here.</summary>
-internal sealed class DesktopsPanel(ILogger<DesktopsPanel> log) : PanelProvider, IDisposable
+/// Windows has no public API to switch desktops. In order, this:
+/// 1. presses the release keys of a full-screen remote desktop (Omnissa Horizon, Remote Desktop)
+///    if one is in front, so it lets go of the keyboard;
+/// 2. activates a window that's on the target desktop, which takes Windows there with no
+///    keystrokes at all;
+/// 3. failing that (an empty desktop), puts the taskbar in front and presses Ctrl+Win+Left/Right
+///    as many times as it takes.</summary>
+internal sealed class DesktopsPanel(ILogger<DesktopsPanel> log, HostSettings settings, HostPaths paths) : PanelProvider, IDisposable
 {
     private const string Root = @"Software\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops";
     private System.Threading.Timer? _timer;
@@ -41,7 +45,15 @@ internal sealed class DesktopsPanel(ILogger<DesktopsPanel> log) : PanelProvider,
 
     /// <summary>Windows 11 keeps the desktop list and the current desktop under VirtualDesktops;
     /// Windows 10 keeps the current one per logon session.</summary>
-    private static DesktopsState Read()
+    private DesktopsState Read() => ReadDesktops() with { ReleaseKeys = settings.RemoteReleaseKeys };
+
+    private static List<Guid> Ids()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(Root);
+        return Guids(key?.GetValue("VirtualDesktopIDs") as byte[]);
+    }
+
+    private static DesktopsState ReadDesktops()
     {
         using var key = Registry.CurrentUser.OpenSubKey(Root);
         var ids = Guids(key?.GetValue("VirtualDesktopIDs") as byte[]);
@@ -77,15 +89,37 @@ internal sealed class DesktopsPanel(ILogger<DesktopsPanel> log) : PanelProvider,
 
     public override async Task<object?> InvokeAsync(string action, JsonObject args, CancellationToken ct)
     {
+        if (action == "configure")
+        {
+            DesktopSwitch.Configure(args, settings, paths);
+            Emit();
+            return null;
+        }
         await _switching.WaitAsync(ct);
         try
         {
             var state = Read();
             var target = DesktopSwitch.Target(action, args, state.Current, state.Desktops.Count);
             if (state.Current == 0) throw new PanelActionException("Windows didn't say which desktop is showing, so FluentDeck can't tell which way to go.");
-            var steps = target - state.Current;
-            if (steps == 0) return null;
+            if (target == state.Current) return null;
 
+            WindowFocus.ReleaseRemoteDesktop(settings.RemoteReleaseKeys);
+
+            // A window on the target desktop: bring it forward and Windows follows.
+            var ids = Ids();
+            if (ids.Count >= target)
+            {
+                var window = VirtualDesktops.WindowOn(ids[target - 1]);
+                if (window != IntPtr.Zero && WindowFocus.Bring(window))
+                {
+                    await Task.Delay(300, ct);
+                    if (Read().Current == target) { Emit(); return null; }
+                }
+            }
+
+            // An empty desktop, or Windows said no: the keyboard shortcut, from the taskbar.
+            var current = Read().Current;
+            var steps = target - (current == 0 ? state.Current : current);
             FocusTaskbar();
             var chord = KeyChord.Parse(steps > 0 ? "Ctrl+Win+Right" : "Ctrl+Win+Left");
             for (var i = 0; i < Math.Abs(steps); i++)
@@ -95,19 +129,19 @@ internal sealed class DesktopsPanel(ILogger<DesktopsPanel> log) : PanelProvider,
             }
             await Task.Delay(250, ct);
             Emit();
+            if (Read().Current != target)
+                log.LogInformation("Desktop switch to {Target} didn't land (on {Current})", target, Read().Current);
             return null;
         }
         finally { _switching.Release(); }
     }
 
-    /// <summary>Bring the taskbar (on every desktop) to the front so the shortcut goes to Windows.
-    /// Tapping Alt first lets a background app take the foreground.</summary>
+    /// <summary>Bring the taskbar (on every desktop) to the front so the shortcut goes to Windows.</summary>
     private static void FocusTaskbar()
     {
         var taskbar = Native.FindWindow("Shell_TrayWnd", null);
         if (taskbar == IntPtr.Zero || Native.GetForegroundWindow() == taskbar) return;
-        KeyInput.Tap(0x12); // VK_MENU
-        Native.SetForegroundWindow(taskbar);
+        WindowFocus.Bring(taskbar);
         Thread.Sleep(60);
     }
 }

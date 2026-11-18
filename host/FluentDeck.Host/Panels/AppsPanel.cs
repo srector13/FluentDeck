@@ -10,7 +10,7 @@ namespace FluentDeck.Host.Panels;
 /// <summary>The app in front and the apps with windows open, checked every second, so the iPad can
 /// switch boards to suit the app you're using; and "focus", which brings an app's window to the
 /// front (Windows follows it to its desktop).</summary>
-internal sealed class AppsPanel(AssetStore assets, ILogger<AppsPanel> log) : PanelProvider, IDisposable
+internal sealed class AppsPanel(AssetStore assets, HostSettings settings, ILogger<AppsPanel> log) : PanelProvider, IDisposable
 {
     /// <summary>Windows that are part of the shell or of other apps, not apps of their own.</summary>
     private static readonly HashSet<string> Ignored = new(StringComparer.OrdinalIgnoreCase)
@@ -80,6 +80,7 @@ internal sealed class AppsPanel(AssetStore assets, ILogger<AppsPanel> log) : Pan
         var exe = args.String("exe");
         var window = AppWindows().FirstOrDefault(w => string.Equals(w.App.Exe, exe, StringComparison.OrdinalIgnoreCase));
         if (window.Hwnd == IntPtr.Zero) throw new PanelActionException($"{Path.GetFileNameWithoutExtension(exe)} isn't open on the PC.");
+        WindowFocus.ReleaseRemoteDesktop(settings.RemoteReleaseKeys);
         if (!WindowFocus.Bring(window.Hwnd)) throw new PanelActionException($"Windows wouldn't bring {window.App.Name} to the front.");
         Task.Delay(300, ct).ContinueWith(_ => Emit(), TaskScheduler.Default);
         return Task.FromResult<object?>(null);

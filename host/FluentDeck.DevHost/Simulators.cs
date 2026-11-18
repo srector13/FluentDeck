@@ -251,7 +251,7 @@ internal sealed class SimThemePanel : PanelProvider
 }
 
 /// <summary>Two named virtual desktops, the second for a full-screen remote session.</summary>
-internal sealed class SimDesktopsPanel(ILogger<SimDesktopsPanel> log) : PanelProvider
+internal sealed class SimDesktopsPanel(ILogger<SimDesktopsPanel> log, HostSettings settings, HostPaths paths) : PanelProvider
 {
     private readonly IReadOnlyList<DesktopInfo> _desktops = [new(1, "Desktop 1"), new(2, "Omnissa")];
     private int _current = 1;
@@ -259,10 +259,16 @@ internal sealed class SimDesktopsPanel(ILogger<SimDesktopsPanel> log) : PanelPro
     public override PanelDescriptor Descriptor => BuiltInPanels.Desktops;
     public override Task StartAsync(CancellationToken ct) { Emit(); return Task.CompletedTask; }
 
-    private void Emit() => Publish(new DesktopsState(_current, _desktops));
+    private void Emit() => Publish(new DesktopsState(_current, _desktops, settings.RemoteReleaseKeys));
 
     public override Task<object?> InvokeAsync(string action, JsonObject args, CancellationToken ct)
     {
+        if (action == "configure")
+        {
+            DesktopSwitch.Configure(args, settings, paths);
+            Emit();
+            return Task.FromResult<object?>(null);
+        }
         _current = DesktopSwitch.Target(action, args, _current, _desktops.Count);
         log.LogInformation("[desktops] {Action} -> desktop {Current} (simulated)", action, _current);
         Emit();

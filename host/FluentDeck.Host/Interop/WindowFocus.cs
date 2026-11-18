@@ -32,11 +32,55 @@ internal static class WindowFocus
         return IntPtr.Zero;
     }
 
-    /// <summary>Restore the window if minimized and put it in front.</summary>
+    /// <summary>The program behind the window in front, as a lower-case file name.</summary>
+    public static string? ForegroundExe()
+    {
+        var hwnd = Native.GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return null;
+        Native.GetWindowThreadProcessId(hwnd, out var pid);
+        var path = Native.ProcessImagePath(pid);
+        return path is null ? null : Path.GetFileName(path).ToLowerInvariant();
+    }
+
+    /// <summary>If a full-screen remote desktop has the keyboard, press its release keys so what
+    /// FluentDeck does next happens on this PC, not the remote one.</summary>
+    public static void ReleaseRemoteDesktop(string releaseKeys)
+    {
+        if (string.IsNullOrWhiteSpace(releaseKeys)) return;
+        if (ForegroundExe() is not { } exe || !Core.Panels.DesktopSwitch.RemoteClients.Contains(exe)) return;
+        try
+        {
+            KeyInput.SendChords(Core.Deck.KeyChord.ParseSequence(releaseKeys));
+            Thread.Sleep(150);
+        }
+        catch (FormatException) { /* checked when saved */ }
+    }
+
+    /// <summary>Restore the window if minimized and put it in front. Joining the input of the
+    /// window in front first is what lets a background app do this without a keystroke; tapping
+    /// Alt is the fallback.</summary>
     public static bool Bring(IntPtr hwnd)
     {
         if (Native.IsIconic(hwnd)) Native.ShowWindow(hwnd, Native.SW_RESTORE);
-        KeyInput.Tap(0x12); // Alt: lets a background app hand over the foreground
-        return Native.SetForegroundWindow(hwnd);
+        var front = Native.GetForegroundWindow();
+        var frontThread = front == IntPtr.Zero ? 0 : Native.GetWindowThreadProcessId(front, out _);
+        var me = Native.GetCurrentThreadId();
+        var attached = frontThread != 0 && frontThread != me && Native.AttachThreadInput(me, frontThread, true);
+        bool ok;
+        try
+        {
+            Native.BringWindowToTop(hwnd);
+            ok = Native.SetForegroundWindow(hwnd);
+        }
+        finally
+        {
+            if (attached) Native.AttachThreadInput(me, frontThread, false);
+        }
+        if (!ok || Native.GetForegroundWindow() != hwnd)
+        {
+            KeyInput.Tap(0x12); // Alt
+            ok = Native.SetForegroundWindow(hwnd);
+        }
+        return ok;
     }
 }

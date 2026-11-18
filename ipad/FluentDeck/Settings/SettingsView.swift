@@ -14,6 +14,9 @@ struct SettingsView: View {
                 if let hostId = app.connection.hostId {
                     pcSection(hostId)
                 }
+                if app.connection.panels.first(where: { $0.id == "desktops" })?.actions.contains("configure") == true {
+                    RemoteDesktopSection()
+                }
 
                 Section {
                     Picker("Background", selection: $settings.backdrop) {
@@ -149,6 +152,47 @@ struct SettingsView: View {
         let short = info?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = info?["CFBundleVersion"] as? String ?? ""
         return build.isEmpty || build == short ? short : "\(short) (\(build))"
+    }
+}
+
+/// The keys the PC presses to make a full-screen remote desktop (Omnissa Horizon, Remote
+/// Desktop) let go of the keyboard before it switches desktops or apps.
+private struct RemoteDesktopSection: View {
+    @Environment(AppModel.self) private var app
+    @State private var keys = ""
+    @State private var loaded = false
+
+    private var saved: String {
+        app.connection.store.box("desktops").decoded(DesktopsState.self)?.releaseKeys ?? ""
+    }
+
+    var body: some View {
+        Section {
+            LabeledContent("Release keys") {
+                TextField("Ctrl+Alt", text: $keys)
+                    .multilineTextAlignment(.trailing)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .onSubmit(save)
+            }
+            if keys != saved {
+                Button("Save Release Keys", action: save)
+            }
+        } header: {
+            Text("Remote Desktop")
+        } footer: {
+            Text("When Omnissa Horizon or Remote Desktop is full screen it keeps the keyboard, so the PC presses these keys first to take it back before switching desktops or apps. Horizon uses Ctrl+Alt unless your company changed it. Leave empty to turn this off.")
+        }
+        .onAppear {
+            guard !loaded else { return }
+            keys = saved
+            loaded = true
+        }
+    }
+
+    private func save() {
+        app.connection.run("desktops", "configure", ["releaseKeys": .string(keys.trimmingCharacters(in: .whitespaces))])
     }
 }
 

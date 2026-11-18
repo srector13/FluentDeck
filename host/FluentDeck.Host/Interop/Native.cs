@@ -32,6 +32,9 @@ internal static partial class Native
     public const int GWL_EXSTYLE = -20;
     public const long WS_EX_TOOLWINDOW = 0x80;
     public const int SW_RESTORE = 9;
+    [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint attach, uint attachTo, bool on);
+    [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
 
     // ── stats ──
     [DllImport("kernel32.dll", SetLastError = true)] public static extern bool GetSystemTimes(out long idle, out long kernel, out long user);

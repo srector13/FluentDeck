@@ -16,8 +16,8 @@ public static class BuiltInPanels
 
     public static readonly PanelDescriptor Theme = new("theme", "Theme", "paintpalette", 1, []);
 
-    public static readonly PanelDescriptor Desktops = new("desktops", "Desktops", "rectangle.split.3x1", 1,
-        ["switch", "next", "previous"]);
+    public static readonly PanelDescriptor Desktops = new("desktops", "Desktops", "rectangle.split.3x1", 2,
+        ["switch", "next", "previous", "configure"]);
 
     public static readonly PanelDescriptor Apps = new("apps", "Apps", "macwindow", 1, ["focus"]);
 
@@ -82,8 +82,8 @@ public sealed record SystemState(
 public sealed record DesktopInfo(int Index, string Name);
 
 /// <summary>The virtual desktops and which one is showing (<paramref name="Current"/> counts from 1;
-/// 0 when Windows doesn't say).</summary>
-public sealed record DesktopsState(int Current, IReadOnlyList<DesktopInfo> Desktops);
+/// 0 when Windows doesn't say), and the keys pressed to release a remote desktop's keyboard grab.</summary>
+public sealed record DesktopsState(int Current, IReadOnlyList<DesktopInfo> Desktops, string ReleaseKeys = "");
 
 /// <summary>An app with a window open on the PC. <paramref name="Exe"/> is the lower-case file name
 /// ("code.exe"), which is what boards and keys match on; <paramref name="Path"/> starts it again.</summary>

@@ -21,6 +21,29 @@ public static class DesktopSwitch
         };
     }
 
+    /// <summary>"configure": the remote-desktop release keys, checked, saved to host.json.
+    /// Returns the cleaned value ("" turns it off).</summary>
+    public static string Configure(JsonObject args, Hosting.HostSettings settings, Hosting.HostPaths paths)
+    {
+        var keys = (args.OptionalString("releaseKeys") ?? "").Trim();
+        if (keys.Length > 0)
+        {
+            try { _ = Deck.KeyChord.ParseSequence(keys); }
+            catch (FormatException ex) { throw new PanelActionException($"Those keys aren't valid: {ex.Message}"); }
+        }
+        settings.RemoteReleaseKeys = keys;
+        settings.Save(paths);
+        return keys;
+    }
+
+    /// <summary>Programs whose full-screen window grabs the keyboard: Omnissa/VMware Horizon
+    /// (its client and the process that draws the remote desktop) and Microsoft's Remote Desktop.</summary>
+    public static readonly HashSet<string> RemoteClients = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "horizon-client.exe", "vmware-view.exe", "vmware-remotemks.exe", "horizon-protocol.exe",
+        "mstsc.exe", "msrdc.exe", "windowsapp.exe",
+    };
+
     private static int Index(JsonObject args, int count)
     {
         var index = (int)Math.Round(args.Double("index"));

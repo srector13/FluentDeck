@@ -125,7 +125,7 @@ For each key you set:
 - **Icon**: an SF Symbol, the app's own Windows icon, or a photo from the iPad that fills the key.
 - **Always lit**: keep the key lit (white, or the accent colour if Settings says so).
 
-A desktop key lights up while its desktop is showing. Windows has no public way to switch desktops, so the PC presses Ctrl+Win+Left/Right as many times as needed, after bringing the taskbar to the front so a full-screen remote desktop client doesn't take the keys.
+A desktop key lights up while its desktop is showing. Windows has no public way to switch desktops, so the PC first presses the remote desktop's **release keys** if Omnissa Horizon or Remote Desktop is full screen in front (Ctrl+Alt by default; change it in Settings › Remote Desktop), then brings forward a window that's on the target desktop, which takes Windows there without any keystrokes. Only for an empty desktop does it fall back to Ctrl+Win+Left/Right. Switch-to-app keys press the release keys too.
 
 The editor also moves and deletes keys. The **⋯** menu adds, renames and deletes pages. Multi-step keys keep their steps and can only be re-labelled and re-iconed here; change their steps in `deck.json`. Store apps have no Start menu shortcut file, so they are not in the app list: use a **Link** such as `spotify:` or type a command such as `wt.exe`.
 

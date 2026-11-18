@@ -105,6 +105,8 @@ struct DesktopsState: Codable, Equatable {
     }
     var current: Int
     var desktops: [Desktop]
+    /// Keys the PC presses to make a full-screen remote desktop let go of the keyboard.
+    var releaseKeys: String?
 }
 
 /// An app with a window open on the PC. `exe` is the lower-case file name boards and keys match on.

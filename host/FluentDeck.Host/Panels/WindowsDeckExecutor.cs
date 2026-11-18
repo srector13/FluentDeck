@@ -2,13 +2,14 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using FluentDeck.Core.Deck;
+using FluentDeck.Core.Hosting;
 using FluentDeck.Core.Panels;
 using FluentDeck.Host.Interop;
 
 namespace FluentDeck.Host.Panels;
 
 /// <summary>Runs deck actions on Windows: launch apps, open URLs/URIs, send hotkeys, type text.</summary>
-internal sealed class WindowsDeckExecutor : IDeckActionExecutor
+internal sealed class WindowsDeckExecutor(HostSettings settings) : IDeckActionExecutor
 {
     public Task ExecuteAsync(DeckAction action, CancellationToken ct)
     {
@@ -29,6 +30,7 @@ internal sealed class WindowsDeckExecutor : IDeckActionExecutor
                 var window = WindowFocus.Find(Path.GetFileName(path));
                 if (window != IntPtr.Zero)
                 {
+                    WindowFocus.ReleaseRemoteDesktop(settings.RemoteReleaseKeys);
                     if (!WindowFocus.Bring(window)) throw new PanelActionException("Windows wouldn't bring that app to the front.");
                 }
                 else if (action.Launch != false)

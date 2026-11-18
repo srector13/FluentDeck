@@ -101,6 +101,13 @@ async def main(a):
         r = await c.invoke("desktops", "previous")
         await c.until(lambda m: m["type"] == "state" and m["topic"] == "desktops" and m["data"]["current"] == 1, what="previous desktop")
         check(r["ok"], "desktops.previous goes back")
+        check(d.get("releaseKeys") == "Ctrl+Alt", "desktops reports the remote-desktop release keys (Ctrl+Alt by default)")
+        r = await c.invoke("desktops", "configure", releaseKeys="Ctrl+Alt+Shift")
+        await c.until(lambda m: m["type"] == "state" and m["topic"] == "desktops" and m["data"]["releaseKeys"] == "Ctrl+Alt+Shift", what="release keys")
+        check(r["ok"], "desktops.configure changes the release keys")
+        r = await c.invoke("desktops", "configure", releaseKeys="Bogus+Ctrl")
+        check(not r["ok"], "invalid release keys are refused")
+        await c.invoke("desktops", "configure", releaseKeys="Ctrl+Alt")
         r = await c.invoke("desktops", "switch", index=5)
         check(not r["ok"] and "doesn't exist" in r["error"], "switching to a missing desktop → friendly error")
         apps = c.states["apps"]
